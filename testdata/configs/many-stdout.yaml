@@ -1,0 +1,13 @@
+tasks:
+  - files:
+      - ./testdata/lists/1.lst
+      - ./testdata/lists/2.lst
+    output: /dev/stdout
+    format: hosts
+    mode: all
+  - files:
+      - ./testdata/lists/1.lst
+      - ./testdata/lists/2.lst
+    output: /dev/stdout
+    format: hosts
+    mode: ipv4

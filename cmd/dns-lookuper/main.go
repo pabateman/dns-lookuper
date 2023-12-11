@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/pabateman/dns-lookuper/internal/lookuper"
+
 	cli "github.com/urfave/cli/v2"
 )
 
@@ -28,10 +30,13 @@ func main() {
 		UseShortOptionHandling: true,
 		EnableBashCompletion:   true,
 		HideHelpCommand:        true,
+		Flags:                  lookuper.Flags,
+		Action:                 lookuper.Lookup,
 	}
 
 	err := app.Run(os.Args)
 	if err != nil {
-		fmt.Printf("%+v: %+v", os.Args[0], err)
+		fmt.Printf("%+v: %+v\n", os.Args[0], err)
+		os.Exit(1)
 	}
 }
