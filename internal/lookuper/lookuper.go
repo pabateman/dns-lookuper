@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path"
 	"slices"
 	"strings"
 
@@ -30,7 +31,7 @@ func Lookup(clictx *cli.Context) error {
 	}
 
 	for _, task := range config.Tasks {
-		err := performTask(task)
+		err := performTask(task, config.settings)
 		if err != nil {
 			return err
 		}
@@ -39,13 +40,13 @@ func Lookup(clictx *cli.Context) error {
 	return nil
 }
 
-func performTask(t *task) error {
+func performTask(t *task, settings *settings) error {
 	pathsList := t.Files
 
 	names := make([]string, 0)
 
-	for _, path := range pathsList {
-		fileContent, err := getHostsSlice(path)
+	for _, p := range pathsList {
+		fileContent, err := getHostsSlice(path.Join(settings.dir, p))
 		if err != nil {
 			return err
 		}
@@ -83,7 +84,7 @@ func performTask(t *task) error {
 	if t.Output == "-" || t.Output == "/dev/stdout" {
 		outputFile = os.Stdout
 	} else {
-		outputFile, err = os.Create(t.Output)
+		outputFile, err = os.Create(path.Join(settings.dir, t.Output))
 		defer outputFile.Close()
 
 		if err != nil {

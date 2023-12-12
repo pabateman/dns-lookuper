@@ -3,6 +3,7 @@ package lookuper
 import (
 	"fmt"
 	"os"
+	"path"
 	"slices"
 
 	"github.com/ghodss/yaml"
@@ -36,7 +37,12 @@ const (
 )
 
 type Config struct {
-	Tasks []*task `json:"tasks"`
+	settings *settings
+	Tasks    []*task `json:"tasks"`
+}
+
+type settings struct {
+	dir string
 }
 
 type task struct {
@@ -97,7 +103,8 @@ var (
 func newConfig(clictx *cli.Context) (*Config, error) {
 
 	result := &Config{
-		Tasks: make([]*task, 0),
+		Tasks:    make([]*task, 0),
+		settings: &settings{},
 	}
 
 	if configFileIsSet(clictx) && cmdLineIsSet(clictx) {
@@ -105,7 +112,10 @@ func newConfig(clictx *cli.Context) (*Config, error) {
 	}
 
 	if configFileIsSet(clictx) {
-		configFile, err := os.ReadFile(clictx.String(argConfig))
+		configPath := clictx.String(argConfig)
+		result.settings.dir = path.Dir(configPath)
+
+		configFile, err := os.ReadFile(configPath)
 		if err != nil {
 			return nil, err
 		}
@@ -114,6 +124,7 @@ func newConfig(clictx *cli.Context) (*Config, error) {
 		if err != nil {
 			return nil, err
 		}
+
 	} else if cmdLineIsSet(clictx) {
 		singleton := &task{
 			Files:    clictx.StringSlice(argFile),
@@ -124,6 +135,13 @@ func newConfig(clictx *cli.Context) (*Config, error) {
 		}
 
 		result.Tasks = append(result.Tasks, singleton)
+
+		wd, err := os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+
+		result.settings.dir = wd
 	}
 
 	outputStdout := false

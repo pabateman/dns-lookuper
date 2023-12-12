@@ -1,5 +1,5 @@
 tasks:
   - files:
-      - ./testdata/lists/1.lst
-      - ./testdata/lists/2.lst
+      - ../lists/1.lst
+      - ../lists/2.lst
     output: '-'

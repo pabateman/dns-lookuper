@@ -1,13 +1,13 @@
 tasks:
   - files:
-      - ./testdata/lists/1.lst
-      - ./testdata/lists/2.lst
+      - ./../lists/1.lst
+      - ./../lists/2.lst
     output: "-"
     format: list
     mode: ipv4
   - files:
-      - ./testdata/lists/1.lst
-      - ./testdata/lists/2.lst
+      - ./../lists/1.lst
+      - ./../lists/2.lst
     output: result_ipv6.txt
     format: list
     mode: ipv6
