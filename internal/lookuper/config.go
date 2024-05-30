@@ -38,7 +38,7 @@ const (
 
 type Config struct {
 	settings *settings
-	Tasks    []*task `json:"tasks"`
+	Tasks    []task `json:"tasks"`
 }
 
 type settings struct {
@@ -103,7 +103,7 @@ var (
 func newConfig(clictx *cli.Context) (*Config, error) {
 
 	result := &Config{
-		Tasks:    make([]*task, 0),
+		Tasks:    make([]task, 0),
 		settings: &settings{},
 	}
 
@@ -126,7 +126,7 @@ func newConfig(clictx *cli.Context) (*Config, error) {
 		}
 
 	} else if cmdLineIsSet(clictx) {
-		singleton := &task{
+		singleton := task{
 			Files:    clictx.StringSlice(argFile),
 			Output:   clictx.String(argOutput),
 			Mode:     clictx.String(argMode),
@@ -154,9 +154,9 @@ func newConfig(clictx *cli.Context) (*Config, error) {
 			outputStdout = true
 		}
 
-		defaultValues(task)
+		defaultValues(&task)
 
-		err := validateTask(task)
+		err := validateTask(&task)
 		if err != nil {
 			return nil, err
 		}

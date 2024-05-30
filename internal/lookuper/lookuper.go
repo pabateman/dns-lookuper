@@ -31,7 +31,7 @@ func Lookup(clictx *cli.Context) error {
 	}
 
 	for _, task := range config.Tasks {
-		err := performTask(task, config.settings)
+		err := performTask(&task, config.settings)
 		if err != nil {
 			return err
 		}
