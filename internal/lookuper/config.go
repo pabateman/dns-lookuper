@@ -17,6 +17,8 @@ const (
 	argFormat   = "format"
 	argTemplate = "template"
 	argConfig   = "config"
+	argDaemon   = "daemon"
+	argInterval = "interval"
 )
 
 const (
@@ -36,13 +38,24 @@ const (
 	formatDefault  = formatHosts
 )
 
+const (
+	daemonEnabledDefault  = false
+	daemonIntervalDefault = "1m"
+)
+
 type Config struct {
-	settings *settings
-	Tasks    []task `json:"tasks"`
+	settings       *settings
+	DaemonSettings *daemonSettings `json:"daemonSettings"`
+	Tasks          []task          `json:"tasks"`
 }
 
 type settings struct {
 	dir string
+}
+
+type daemonSettings struct {
+	Enabled  bool   `json:"enabled"`
+	Interval string `json:"interval"`
 }
 
 type task struct {
@@ -94,6 +107,20 @@ var (
 			Aliases: []string{"c"},
 			EnvVars: []string{"DNS_LOOKUPER_CONFIG"},
 		},
+		&cli.BoolFlag{
+			Name:    argDaemon,
+			Usage:   "enable daemon mode",
+			Aliases: []string{"d"},
+			EnvVars: []string{"DNS_LOOKUPER_DAEMON"},
+			Value:   daemonEnabledDefault,
+		},
+		&cli.StringFlag{
+			Name:    argInterval,
+			Usage:   "lookup interval in duration format like 1m, 5y, 15s etc; allowed only in daemon mode",
+			Aliases: []string{"i"},
+			EnvVars: []string{"DNS_LOOKUPER_INTERVAL"},
+			Value:   daemonIntervalDefault,
+		},
 	}
 
 	formatEnum = []string{formatJSON, formatYAML, formatCSV, formatHosts, formatList, formatTemplate}
@@ -105,6 +132,10 @@ func newConfig(clictx *cli.Context) (*Config, error) {
 	result := &Config{
 		Tasks:    make([]task, 0),
 		settings: &settings{},
+		DaemonSettings: &daemonSettings{
+			Enabled:  daemonEnabledDefault,
+			Interval: daemonIntervalDefault,
+		},
 	}
 
 	if configFileIsSet(clictx) && cmdLineIsSet(clictx) {

@@ -30,6 +30,10 @@ func Lookup(clictx *cli.Context) error {
 		return err
 	}
 
+	return walkTasks(config)
+}
+
+func walkTasks(config *Config) error {
 	for _, task := range config.Tasks {
 		err := performTask(&task, config.settings)
 		if err != nil {
@@ -38,6 +42,7 @@ func Lookup(clictx *cli.Context) error {
 	}
 
 	return nil
+
 }
 
 func performTask(t *task, settings *settings) error {
