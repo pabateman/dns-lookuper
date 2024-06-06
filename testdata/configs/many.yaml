@@ -8,6 +8,6 @@ tasks:
   - files:
       - ./../lists/1.lst
       - ./../lists/2.lst
-    output: result_ipv6.txt
+    output: ../output/result_ipv6.txt
     format: list
     mode: ipv6

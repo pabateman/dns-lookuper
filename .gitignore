@@ -1,2 +1,4 @@
 __debug*
 .vscode
+testdata/output/*
+!testdata/output/.gitkeep

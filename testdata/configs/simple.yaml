@@ -1,3 +1,5 @@
+settings:
+  lookupTimeout: 2
 tasks:
   - files:
       - ../lists/1.lst

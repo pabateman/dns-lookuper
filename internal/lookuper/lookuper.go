@@ -2,16 +2,21 @@ package lookuper
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"net"
 	"os"
 	"path"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/asaskevich/govalidator"
+	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
 )
+
+const LookupTimeoutSeconds = 15
 
 type response struct {
 	Name      string   `json:"name"`
@@ -30,12 +35,53 @@ func Lookup(clictx *cli.Context) error {
 		return err
 	}
 
-	return walkTasks(config)
+	if config.Settings.DaemonSettings.Enabled {
+		return daemonMode(config)
+	} else {
+		return walkTasks(config)
+	}
+}
+
+func daemonMode(config *Config) error {
+	intervalDuration, err := time.ParseDuration(config.Settings.DaemonSettings.Interval)
+	if err != nil {
+		return err
+	}
+
+	ticker := time.NewTicker(intervalDuration)
+	defer ticker.Stop()
+
+	log.SetFormatter(&log.TextFormatter{
+		FullTimestamp: true,
+	})
+
+	log.Infof("starting lookup daemon with interval %s", config.Settings.DaemonSettings.Interval)
+
+	errorsChan := make(chan error, 1)
+
+	log.Info("perform the very first task walkthrough")
+	err = walkTasks(config)
+	if err != nil {
+		log.Error(err)
+	}
+
+	for {
+		select {
+		case <-ticker.C:
+			log.Infof("lookup time, task walkthrough")
+			err := walkTasks(config)
+			if err != nil {
+				errorsChan <- err
+			}
+		case err := <-errorsChan:
+			log.Error(err)
+		}
+	}
 }
 
 func walkTasks(config *Config) error {
 	for _, task := range config.Tasks {
-		err := performTask(&task, config.settings)
+		err := performTask(&task, config.Settings)
 		if err != nil {
 			return err
 		}
@@ -50,8 +96,12 @@ func performTask(t *task, settings *settings) error {
 
 	names := make([]string, 0)
 
+	resolver := &net.Resolver{}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(settings.LookupTimeout)*time.Second)
+	defer cancel()
+
 	for _, p := range pathsList {
-		fileContent, err := getHostsSlice(path.Join(settings.dir, p))
+		fileContent, err := getHostsSlice(getPath(settings, p))
 		if err != nil {
 			return err
 		}
@@ -63,7 +113,7 @@ func performTask(t *task, settings *settings) error {
 
 	responses := make([]response, 0, len(names))
 	for _, name := range names {
-		answer, err := net.LookupIP(name)
+		answer, err := resolver.LookupIP(ctx, "ip", name)
 		if err != nil {
 			return err
 		}
@@ -89,12 +139,13 @@ func performTask(t *task, settings *settings) error {
 	if t.Output == "-" || t.Output == "/dev/stdout" {
 		outputFile = os.Stdout
 	} else {
-		outputFile, err = os.Create(path.Join(settings.dir, t.Output))
-		defer outputFile.Close()
-
+		outputFile, err = os.Create(getPath(settings, t.Output))
 		if err != nil {
 			return err
 		}
+
+		// nolint:errcheck
+		defer outputFile.Close()
 	}
 
 	printer := &printer{
@@ -127,6 +178,14 @@ func performTask(t *task, settings *settings) error {
 	}
 
 	return nil
+}
+
+func getPath(settings *settings, p string) string {
+	if path.IsAbs(p) {
+		return p
+	} else {
+		return path.Join(settings.dir, p)
+	}
 }
 
 func getHostsSlice(path string) ([]string, error) {

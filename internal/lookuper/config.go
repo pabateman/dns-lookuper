@@ -19,6 +19,7 @@ const (
 	argConfig   = "config"
 	argDaemon   = "daemon"
 	argInterval = "interval"
+	argTimeout  = "timeout"
 )
 
 const (
@@ -43,14 +44,20 @@ const (
 	daemonIntervalDefault = "1m"
 )
 
+const (
+	timeoutDefault = 15
+)
+
 type Config struct {
-	settings       *settings
-	DaemonSettings *daemonSettings `json:"daemonSettings"`
-	Tasks          []task          `json:"tasks"`
+	Settings *settings `json:"settings"`
+	Tasks    []task    `json:"tasks"`
 }
 
 type settings struct {
-	dir string
+	dir            string
+	outputConsole  bool
+	LookupTimeout  int             `json:"lookupTimeout"`
+	DaemonSettings *daemonSettings `json:"daemon"`
 }
 
 type daemonSettings struct {
@@ -76,7 +83,7 @@ var (
 		},
 		&cli.StringFlag{
 			Name:    argOutput,
-			Usage:   "output file; set '-' for stdout",
+			Usage:   "output file; set '-' for console",
 			Aliases: []string{"o"},
 			EnvVars: []string{"DNS_LOOKUPER_OUTPUT"},
 			Value:   "-",
@@ -121,6 +128,13 @@ var (
 			EnvVars: []string{"DNS_LOOKUPER_INTERVAL"},
 			Value:   daemonIntervalDefault,
 		},
+		&cli.IntFlag{
+			Name:    argTimeout,
+			Usage:   "lookup timeout in seconds",
+			Aliases: []string{"w"},
+			EnvVars: []string{"DNS_LOOKUPER_TIMEOUT"},
+			Value:   timeoutDefault,
+		},
 	}
 
 	formatEnum = []string{formatJSON, formatYAML, formatCSV, formatHosts, formatList, formatTemplate}
@@ -130,11 +144,14 @@ var (
 func newConfig(clictx *cli.Context) (*Config, error) {
 
 	result := &Config{
-		Tasks:    make([]task, 0),
-		settings: &settings{},
-		DaemonSettings: &daemonSettings{
-			Enabled:  daemonEnabledDefault,
-			Interval: daemonIntervalDefault,
+		Tasks: make([]task, 0),
+		Settings: &settings{
+			LookupTimeout: clictx.Int(argTimeout),
+			outputConsole: false,
+			DaemonSettings: &daemonSettings{
+				Enabled:  clictx.Bool(argDaemon),
+				Interval: clictx.String(argInterval),
+			},
 		},
 	}
 
@@ -144,7 +161,7 @@ func newConfig(clictx *cli.Context) (*Config, error) {
 
 	if configFileIsSet(clictx) {
 		configPath := clictx.String(argConfig)
-		result.settings.dir = path.Dir(configPath)
+		result.Settings.dir = path.Dir(configPath)
 
 		configFile, err := os.ReadFile(configPath)
 		if err != nil {
@@ -172,22 +189,15 @@ func newConfig(clictx *cli.Context) (*Config, error) {
 			return nil, err
 		}
 
-		result.settings.dir = wd
+		result.Settings.dir = wd
+	} else {
+		cli.ShowAppHelpAndExit(clictx, 42)
 	}
 
-	outputStdout := false
+	for index := range result.Tasks {
+		defaultValues(&result.Tasks[index])
 
-	for _, task := range result.Tasks {
-		if task.Output == "-" || task.Output == "/dev/stdout" {
-			if outputStdout {
-				return nil, fmt.Errorf("only one task can be printed to stdout")
-			}
-			outputStdout = true
-		}
-
-		defaultValues(&task)
-
-		err := validateTask(&task)
+		err := validateTask(&result.Tasks[index], result.Settings)
 		if err != nil {
 			return nil, err
 		}
@@ -218,9 +228,20 @@ func defaultValues(t *task) {
 	}
 }
 
-func validateTask(t *task) error {
+func validateTask(t *task, s *settings) error {
 	if t.Output == "" {
 		return fmt.Errorf("there is no output file specified for task")
+	}
+
+	if t.Output == "-" || t.Output == "/dev/stdout" || t.Output == "/dev/stderr" {
+		if s.DaemonSettings.Enabled {
+			return fmt.Errorf("console output not available in daemon mode")
+		}
+
+		if s.outputConsole {
+			return fmt.Errorf("only one task can be printed to console")
+		}
+		s.outputConsole = true
 	}
 
 	if !slices.Contains(modeEnum, t.Mode) {
