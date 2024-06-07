@@ -1,0 +1,11 @@
+settings:
+  lookupTimeout: 2
+  daemon:
+    enabled: true
+    interval: 30s
+tasks:
+  - files:
+      - ../lists/1.lst
+      - ../lists/2.lst
+    output: ../output/daemonconfig.txt
+    format: yaml

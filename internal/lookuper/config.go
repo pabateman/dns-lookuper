@@ -137,8 +137,10 @@ var (
 		},
 	}
 
-	formatEnum = []string{formatJSON, formatYAML, formatCSV, formatHosts, formatList, formatTemplate}
-	modeEnum   = []string{modeAll, modeIpv4, modeIpv6}
+	formatEnum     = []string{formatJSON, formatYAML, formatCSV, formatHosts, formatList, formatTemplate}
+	modeEnum       = []string{modeAll, modeIpv4, modeIpv6}
+	argsConfigFile = []string{argConfig}
+	argCmdLine     = []string{argDaemon, argFile, argFormat, argInterval, argMode, argOutput, argTemplate, argTimeout}
 )
 
 func newConfig(clictx *cli.Context) (*Config, error) {
@@ -207,15 +209,20 @@ func newConfig(clictx *cli.Context) (*Config, error) {
 }
 
 func configFileIsSet(clictx *cli.Context) bool {
-	return clictx.IsSet(argConfig)
+	return anyIsSet(clictx, argsConfigFile)
 }
 
 func cmdLineIsSet(clictx *cli.Context) bool {
-	return clictx.IsSet(argFile) ||
-		clictx.IsSet(argFormat) ||
-		clictx.IsSet(argMode) ||
-		clictx.IsSet(argOutput) ||
-		clictx.IsSet(argTemplate)
+	return anyIsSet(clictx, argCmdLine)
+}
+
+func anyIsSet(clictx *cli.Context, args []string) bool {
+	for _, arg := range args {
+		if clictx.IsSet(arg) {
+			return true
+		}
+	}
+	return false
 }
 
 func defaultValues(t *task) {

@@ -22,7 +22,7 @@ type printerFunc func() error
 
 var (
 	CSVHeaders    = []string{"name", "address"}
-	templateHosts = "{{host}} {{address}}"
+	templateHosts = "{{address}} {{host}}"
 )
 
 func (p *printer) print() error {

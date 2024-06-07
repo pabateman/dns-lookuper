@@ -1,0 +1,62 @@
+name: Build and Publish
+
+on:
+  push:
+    branches:
+      - "*"
+  pull_request:
+    branches:
+      - "*"
+
+env:
+  ARTIFACT_VERSION: ${{ github.ref_name }}
+
+jobs:
+  build_and_docker:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        goos: [linux, darwin]
+        goarch: [amd64, arm64]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.22'
+
+
+      - name: Verify go.mod is sane
+        run: go mod tidy && git diff --no-patch --exit-code
+
+      - name: Run code lint
+        uses: golangci/golangci-lint-action@v6.0.1
+        with:
+          args: --timeout=3m
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Build binaries
+        run: |
+          mkdir -p dist
+          export GOBIN=$PWD/dist
+          GOOS=${{ matrix.goos }} \
+          GOARCH=${{ matrix.goarch }} \
+          go install \
+            -installsuffix "static" \
+            -ldflags "                                            \
+                -X main.Version=${ARTIFACT_VERSION}                        \
+                -X main.GoVersion=$(go version | cut -d " " -f 3) \
+                -X main.Compiler=$(go env CC)                     \
+                -X main.Platform=$(go env GOOS)/$(go env GOARCH)  \
+            " ./...
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v2
+        with:
+          name: dns-lookuper-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/
