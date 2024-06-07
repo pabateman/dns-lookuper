@@ -133,12 +133,12 @@ jobs:
           cp dist/dns-lookuper-linux-*/* docker
           echo "
           FROM ubuntu:oracular as intermediate
-          ARG TARGETPLATFORM
-          ARG BUILDPLATFORM
           WORKDIR /dist
           COPY dns-lookuper-linux-* .
-          RUN mkdir -p /target && \
-              cp ./dns-lookuper-$(echo $TARGETPLATFORM | tr '/' '-') /target/dns-lookuper
+          ARG TARGETPLATFORM
+          ARG BUILDPLATFORM
+          RUN mkdir -p /target && \\
+              cp ./dns-lookuper-\$(echo \$TARGETPLATFORM | tr '/' '-') /target/dns-lookuper
           FROM ubuntu:oracular
           COPY --from=intermediate /target/dns-lookuper /dns-lookuper
           RUN chmod +x /dns-lookuper
