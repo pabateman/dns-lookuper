@@ -132,10 +132,10 @@ jobs:
           mkdir -p docker
           cp dist/dns-lookuper-linux-*/* docker
           echo "
-          FROM ubuntu:oracular --platform=amd64
+          FROM --platform=amd64 ubuntu:oracular
           COPY dns-lookuper-linux-amd64 /dns-lookuper
           CMD [\"/dns-lookuper\"]
-          FROM ubuntu:oracular --platform=arm64
+          FROM --platform=arm64 ubuntu:oracular
           COPY dns-lookuper-linux-arm64 /dns-lookuper
           CMD [\"/dns-lookuper\"]
           " > docker/Dockerfile
