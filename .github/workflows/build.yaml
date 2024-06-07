@@ -1,4 +1,4 @@
-name: Build and Publish
+name: Build
 
 on:
   push:
@@ -12,7 +12,7 @@ env:
   ARTIFACT_VERSION: ${{ github.ref_name }}
 
 jobs:
-  build_and_docker:
+  build:
     runs-on: ubuntu-latest
 
     strategy:
@@ -43,17 +43,18 @@ jobs:
       - name: Build binaries
         run: |
           mkdir -p dist
-          export GOBIN=$PWD/dist
           GOOS=${{ matrix.goos }} \
           GOARCH=${{ matrix.goarch }} \
-          go install \
+          go build \
             -installsuffix "static" \
             -ldflags "                                            \
                 -X main.Version=${ARTIFACT_VERSION}                        \
                 -X main.GoVersion=$(go version | cut -d " " -f 3) \
                 -X main.Compiler=$(go env CC)                     \
                 -X main.Platform=$(go env GOOS)/$(go env GOARCH)  \
-            " ./...
+            " \
+            -o dist/dns-lookuper-${{ matrix.goos }}-${{ matrix.goarch }} \
+            ./...
 
       - name: Upload binaries
         uses: actions/upload-artifact@v2

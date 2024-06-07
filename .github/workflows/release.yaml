@@ -9,7 +9,7 @@ env:
   ARTIFACT_VERSION: ${{ github.ref_name }}
 
 jobs:
-  release_and_docker_build:
+  release:
     runs-on: ubuntu-latest
     needs: build_binaries
 
