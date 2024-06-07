@@ -42,19 +42,20 @@ jobs:
 
       - name: Build binaries
         run: |
-          mkdir -p dist
           GOOS=${{ matrix.goos }} \
           GOARCH=${{ matrix.goarch }} \
           go build \
             -installsuffix "static" \
             -ldflags "                                            \
-                -X main.Version=${ARTIFACT_VERSION}                        \
+                -X main.Version=${ARTIFACT_VERSION:-"local"}      \
                 -X main.GoVersion=$(go version | cut -d " " -f 3) \
                 -X main.Compiler=$(go env CC)                     \
                 -X main.Platform=$(go env GOOS)/$(go env GOARCH)  \
             " \
-            -o dist/dns-lookuper-${{ matrix.goos }}-${{ matrix.goarch }} \
+            -o ./ \
             ./...
+          mkdir -p dist
+          cp dns-lookuper dist/dns-lookuper-${{ matrix.goos }}-${{ matrix.goarch }}
 
       - name: Upload binaries
         uses: actions/upload-artifact@v2
