@@ -118,8 +118,8 @@ jobs:
         if: ${{ matrix.goos == 'linux' }}
         run: |
           mkdir -p docker
-          cp dist/dns-lookuper-${{ matrix.goos }}-${{ matrix.goarch }}* docker
-          echo -e "FROM scratch\nCOPY myapp /myapp\nCMD [\"/myapp\"]" > docker/Dockerfile
+          cp dist/dns-lookuper-${{ matrix.goos }}-${{ matrix.goarch }} docker/dns-lookuper
+          echo -e "FROM scratch\nCOPY dns-lookuper /dns-lookuper\nCMD [\"/dns-lookuper\"]" > docker/Dockerfile
 
       - name: Build and push Docker images
         if: ${{ matrix.goos == 'linux' }}
