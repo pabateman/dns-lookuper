@@ -129,5 +129,5 @@ jobs:
           push: true
           tags: |
             pabateman/dns-lookuper:latest
-            pabateman/dns-lookuper:${{ github.ref }}
+            pabateman/dns-lookuper:${{ github.ref_name }}
           platforms: ${{ matrix.goos }}/${{ matrix.goarch }}
