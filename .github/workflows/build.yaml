@@ -142,7 +142,7 @@ jobs:
           FROM ubuntu:oracular
           COPY --from=intermediate /target/dns-lookuper /dns-lookuper
           RUN chmod +x /dns-lookuper
-          ENTRYPOINT [ "/dns-lookuper" ]
+          ENTRYPOINT [ \"/dns-lookuper\" ]
           " > docker/Dockerfile
 
       - name: Build and push Docker images
