@@ -123,7 +123,7 @@ var (
 		},
 		&cli.StringFlag{
 			Name:    argInterval,
-			Usage:   "lookup interval in duration format like 1m, 5y, 15s etc; allowed only in daemon mode",
+			Usage:   "lookup interval in duration format like 1m, 5y, 15s etc; effective only in daemon mode",
 			Aliases: []string{"i"},
 			EnvVars: []string{"DNS_LOOKUPER_INTERVAL"},
 			Value:   daemonIntervalDefault,

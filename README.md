@@ -1,14 +1,34 @@
 # DNS Lookuper
 
-DNS Lookuper is simple utility that resolves your list of domain names into their addresses. Supports several output formats such as `yaml`, `json`, `csv` and custom template as well.
+DNS Lookuper is a simple utility that resolves your list of domain names into their addresses. It supports several output formats such as `yaml`, `json`, `csv`, and custom templates.
 
 ## Installation
 
-To be described later.
+See the following artifacts:
+
+- [Releases](https://github.com/pabateman/dns-lookuper/releases)
+- [Docker Hub Images](https://hub.docker.com/repository/docker/pabateman/dns-lookuper/general)
+
+### Example for Linux AMD64
+
+#### Binary
+
+```bash
+curl -Lo dns-lookuper https://github.com/pabateman/dns-lookuper/releases/latest/download/dns-lookuper-linux-amd64
+chmod +x dns-lookuper
+mv dns-lookuper /usr/local/bin
+```
+
+#### Docker
+
+```bash
+VERSION=$(curl -sL https://api.github.com/repos/pabateman/dns-lookuper/releases/latest | grep tag_name | cut -d '"' -f 4)
+docker pull pabateman/dns-lookuper:${VERSION}
+```
 
 ## Usage
 
-Lookuper works with command line args as well as a config file.
+Lookuper works with command line arguments as well as a configuration file.
 
 The utility uses the concept of tasks. You can configure only one task through the command line, whereas through a configuration file, you can configure multiple tasks.
 
