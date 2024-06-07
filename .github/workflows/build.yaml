@@ -130,7 +130,7 @@ jobs:
       - name: Prepare Docker context
         run: |
           mkdir -p docker
-          cp dist/dns-lookuper-linux-* docker
+          cp dist/dns-lookuper-linux-*/* docker
           echo "
           FROM ubuntu:oracular --platform=amd64
           COPY dns-lookuper-linux-amd64 /dns-lookuper
