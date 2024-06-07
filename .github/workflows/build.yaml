@@ -60,10 +60,10 @@ jobs:
           cp dns-lookuper dist/dns-lookuper-${{ matrix.goos }}-${{ matrix.goarch }}
 
       - name: Upload binaries
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: dns-lookuper-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/
+          path: dist
 
   release:
     needs: build
@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        goos: [linux]
+        goos: [linux, darwin]
         goarch: [amd64, arm64]
 
     steps:
@@ -91,6 +91,12 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dns-lookuper-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist
 
       - name: Generate Checksums
         id: upload-checksums
@@ -119,12 +125,14 @@ jobs:
           asset_path: dist/*
 
       - name: Prepare Docker context
+        if: ${{ matrix.goos == 'linux' }}
         run: |
           mkdir -p docker
           cp dist/dns-lookuper-${{ matrix.goos }}-${{ matrix.goarch }}* docker
           echo -e "FROM scratch\nCOPY myapp /myapp\nCMD [\"/myapp\"]" > docker/Dockerfile
 
       - name: Build and push Docker images
+        if: ${{ matrix.goos == 'linux' }}
         uses: docker/build-push-action@v3
         with:
           context: docker
