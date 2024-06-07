@@ -133,6 +133,8 @@ jobs:
           cp dist/dns-lookuper-linux-*/* docker
           echo "
           FROM ubuntu:oracular as intermediate
+          ARG TARGETPLATFORM
+          ARG BUILDPLATFORM
           WORKDIR /dist
           COPY dns-lookuper-linux-* .
           RUN mkdir -p /target && \
