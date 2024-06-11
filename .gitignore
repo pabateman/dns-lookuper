@@ -2,3 +2,6 @@ __debug*
 .vscode
 testdata/output/*
 !testdata/output/.gitkeep
+dns-lookuper
+out/
+!out/.gitkeep
