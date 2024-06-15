@@ -1,0 +1,16 @@
+tasks:
+  - files:
+      - ../lists/1.lst
+      - ../lists/2.lst
+    output: '-'
+    format: template
+    mode: ipv4
+    template:
+      header: |
+        welcome to my awesome resolved list header
+        it can be multiline
+      text: "here is {{host}} with address {{address}}"
+      footer: |
+        welcome to my awesome resolved list footer
+        it can be multiline as well
+        byebye!

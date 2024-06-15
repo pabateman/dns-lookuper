@@ -11,15 +11,17 @@ import (
 )
 
 const (
-	argFile     = "file"
-	argOutput   = "output"
-	argMode     = "mode"
-	argFormat   = "format"
-	argTemplate = "template"
-	argConfig   = "config"
-	argDaemon   = "daemon"
-	argInterval = "interval"
-	argTimeout  = "timeout"
+	argFile           = "file"
+	argOutput         = "output"
+	argMode           = "mode"
+	argFormat         = "format"
+	argTemplateText   = "template-text"
+	argTemplateHeader = "template-header"
+	argTemplateFooter = "template-footer"
+	argConfig         = "config"
+	argDaemon         = "daemon"
+	argInterval       = "interval"
+	argTimeout        = "timeout"
 )
 
 const (
@@ -66,11 +68,17 @@ type daemonSettings struct {
 }
 
 type task struct {
-	Files    []string `json:"files"`
-	Output   string   `json:"output"`
-	Mode     string   `json:"mode"`
-	Format   string   `json:"format"`
-	Template string   `json:"template"`
+	Files    []string  `json:"files"`
+	Output   string    `json:"output"`
+	Mode     string    `json:"mode"`
+	Format   string    `json:"format"`
+	Template *template `json:"template"`
+}
+
+type template struct {
+	Text   string `json:"text"`
+	Header string `json:"header"`
+	Footer string `json:"footer"`
 }
 
 var (
@@ -103,10 +111,20 @@ var (
 			Value:   formatDefault,
 		},
 		&cli.StringFlag{
-			Name:    argTemplate,
-			Usage:   fmt.Sprintf("output template; required with --%s=%s", argFormat, formatTemplate),
+			Name:    argTemplateText,
+			Usage:   fmt.Sprintf("output template text; required with --%s=%s", argFormat, formatTemplate),
 			Aliases: []string{"t"},
-			EnvVars: []string{"DNS_LOOKUPER_TEMPLATE"},
+			EnvVars: []string{"DNS_LOOKUPER_TEMPLATE_TEXT"},
+		},
+		&cli.StringFlag{
+			Name:    argTemplateHeader,
+			Usage:   "output template header",
+			EnvVars: []string{"DNS_LOOKUPER_TEMPLATE_HEADER"},
+		},
+		&cli.StringFlag{
+			Name:    argTemplateFooter,
+			Usage:   "output template footer",
+			EnvVars: []string{"DNS_LOOKUPER_TEMPLATE_FOOTER"},
 		},
 		&cli.StringFlag{
 			Name:    argConfig,
@@ -140,7 +158,7 @@ var (
 	formatEnum     = []string{formatJSON, formatYAML, formatCSV, formatHosts, formatList, formatTemplate}
 	modeEnum       = []string{modeAll, modeIpv4, modeIpv6}
 	argsConfigFile = []string{argConfig}
-	argCmdLine     = []string{argDaemon, argFile, argFormat, argInterval, argMode, argOutput, argTemplate, argTimeout}
+	argCmdLine     = []string{argDaemon, argFile, argFormat, argInterval, argMode, argOutput, argTemplateText, argTemplateFooter, argTemplateHeader, argTimeout}
 )
 
 func newConfig(clictx *cli.Context) (*Config, error) {
@@ -177,11 +195,15 @@ func newConfig(clictx *cli.Context) (*Config, error) {
 
 	} else if cmdLineIsSet(clictx) {
 		singleton := task{
-			Files:    clictx.StringSlice(argFile),
-			Output:   clictx.String(argOutput),
-			Mode:     clictx.String(argMode),
-			Format:   clictx.String(argFormat),
-			Template: clictx.String(argTemplate),
+			Files:  clictx.StringSlice(argFile),
+			Output: clictx.String(argOutput),
+			Mode:   clictx.String(argMode),
+			Format: clictx.String(argFormat),
+			Template: &template{
+				Header: clictx.String(argTemplateHeader),
+				Text:   clictx.String(argTemplateText),
+				Footer: clictx.String(argTemplateFooter),
+			},
 		}
 
 		result.Tasks = append(result.Tasks, singleton)
@@ -259,12 +281,15 @@ func validateTask(t *task, s *settings) error {
 		return fmt.Errorf("unsupported output format %s; valid formats are %s", t.Format, formatEnum)
 	}
 
-	if t.Format == formatTemplate && t.Template == "" {
-		return fmt.Errorf(`you must specify template string (--%[1]s or "%[1]s" key in file) when output format is "%[2]s"`, argTemplate, formatTemplate)
+	if t.Format == formatTemplate && t.Template.Text == "" {
+		return fmt.Errorf(`you must specify template text at least (--%[1]s or template key in file) when output format is "%[2]s"`, argTemplateText, formatTemplate)
 	}
 
-	if t.Format != formatTemplate && t.Template != "" {
-		return fmt.Errorf(`template string allowed only with output format of type "template"`)
+	if t.Format != formatTemplate &&
+		(t.Template.Text != "" ||
+			t.Template.Header != "" ||
+			t.Template.Footer != "") {
+		return fmt.Errorf(`template settings allowed only with output format of type "%s"`, formatTemplate)
 	}
 
 	return nil

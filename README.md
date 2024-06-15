@@ -317,19 +317,70 @@ terraform.io,76.76.21.21
 
 ### Template
 
-Additionally, you can specify your own template for the lookup result for every task separately. The only available variables are `{{host}}` for the host and `{{address}}` for addresses:
+Additionally, you can specify your own template for the lookup result for every task separately. You can also specify a header (i.e., the first line) and a footer (i.e., the last line) for the template. The only available variables are `{{host}}` for the host and `{{address}}` for addresses, and these variables are available only for the body of the template..
 
 ```bash
-$ dns-lookuper -f testdata/lists/1.lst -r template -t "there is {{host}} with address {{address}}"
+$ dns-lookuper -f testdata/lists/1.lst -r template -t "there is {{host}} with address {{address}}" --template-header "hello from the header of the template" --template-footer "hello from the footer of the template"
 ```
 
 Output:
 
 ```text
-there is cloudflare.com with address 104.16.132.229
+hello from the header of the template
 there is cloudflare.com with address 104.16.133.229
-there is cloudflare.com with address 2606:4700::6810:85e5
+there is cloudflare.com with address 104.16.132.229
 there is cloudflare.com with address 2606:4700::6810:84e5
+there is cloudflare.com with address 2606:4700::6810:85e5
 there is hashicorp.com with address 76.76.21.21
 there is terraform.io with address 76.76.21.21
+hello from the footer of the template
+```
+
+Another example for the config file stored in [testdata/config/template.yaml](/testdata/config/template.yaml):
+
+```yaml
+tasks:
+  - files:
+      - ../lists/1.lst
+      - ../lists/2.lst
+    output: '-'
+    format: template
+    mode: ipv4
+    template:
+      header: |
+        welcome to my awesome resolved list header
+        it can be multiline
+      text: "here is {{host}} with address {{address}}"
+      footer: |
+        welcome to my awesome resolved list footer
+        it can be multiline as well
+        byebye!
+```
+
+```bash
+$ dns-lookuper -c testdata/configs/template.yaml
+```
+
+```text
+welcome to my awesome resolved list header
+it can be multiline
+
+here is cloudflare.com with address 104.16.133.229
+here is cloudflare.com with address 104.16.132.229
+here is google.com with address 142.250.150.138
+here is google.com with address 142.250.150.113
+here is google.com with address 142.250.150.102
+here is google.com with address 142.250.150.100
+here is google.com with address 142.250.150.101
+here is google.com with address 142.250.150.139
+here is hashicorp.com with address 76.76.21.21
+here is linked.in with address 108.174.10.24
+here is rpm.releases.hashicorp.com with address 52.222.214.72
+here is rpm.releases.hashicorp.com with address 52.222.214.58
+here is rpm.releases.hashicorp.com with address 52.222.214.125
+here is rpm.releases.hashicorp.com with address 52.222.214.123
+here is terraform.io with address 76.76.21.21
+welcome to my awesome resolved list footer
+it can be multiline as well
+byebye!
 ```
