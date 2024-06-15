@@ -1,7 +1,6 @@
 package lookuper
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -21,8 +20,14 @@ type printer struct {
 type printerFunc func() error
 
 var (
-	CSVHeaders    = []string{"name", "address"}
-	templateHosts = "{{address}} {{host}}"
+	templateCSV = &template{
+		Header: "name,address",
+		Text:   "{{host}},{{address}}",
+	}
+
+	templateHosts = &template{
+		Text: "{{address}} {{host}}",
+	}
 )
 
 func (p *printer) print() error {
@@ -30,9 +35,15 @@ func (p *printer) print() error {
 }
 
 func (p *printer) printTemplate() error {
-	t, err := fasttemplate.NewTemplate(p.task.Template, "{{", "}}")
+	t, err := fasttemplate.NewTemplate(p.task.Template.Text, "{{", "}}")
 	if err != nil {
 		return err
+	}
+
+	if p.task.Template.Header != "" {
+		if _, err := p.file.WriteString(fmt.Sprintln(p.task.Template.Header)); err != nil {
+			return err
+		}
 	}
 
 	for _, response := range p.responseList {
@@ -45,6 +56,12 @@ func (p *printer) printTemplate() error {
 			if _, err := p.file.WriteString(fmt.Sprintln(s)); err != nil {
 				return err
 			}
+		}
+	}
+
+	if p.task.Template.Footer != "" {
+		if _, err := p.file.WriteString(fmt.Sprintln(p.task.Template.Footer)); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -97,25 +114,5 @@ func (p *printer) printYAML() error {
 		return err
 	}
 
-	return nil
-}
-
-func (p *printer) printCSV() error {
-	encoder := csv.NewWriter(p.file)
-	defer encoder.Flush()
-
-	err := encoder.Write(CSVHeaders)
-	if err != nil {
-		return err
-	}
-
-	for _, response := range p.responseList {
-		for _, address := range response.Addresses {
-			err = encoder.Write([]string{response.Name, address.String()})
-			if err != nil {
-				return err
-			}
-		}
-	}
 	return nil
 }

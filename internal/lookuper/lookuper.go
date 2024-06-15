@@ -167,7 +167,8 @@ func performTask(t *task, settings *settings) error {
 	case formatYAML:
 		printer.fn = printer.printYAML
 	case formatCSV:
-		printer.fn = printer.printCSV
+		printer.task.Template = templateCSV
+		printer.fn = printer.printTemplate
 	default:
 		return fmt.Errorf(`invalid output format "%s"`, t.Format)
 	}

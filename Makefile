@@ -47,8 +47,7 @@ gitignore:
 .PHONY: lint
 lint:
 	golangci-lint run \
-		--timeout=3m \
-		--exclude-dirs hack
+		--timeout=3m
 
 .INTERMEDIATE: $(DISTFILE:.gz=)
 $(DISTFILE:.gz=): $(BUILDDIR)
