@@ -201,9 +201,15 @@ func getHostsSlice(path string) ([]string, error) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		for _, name := range strings.Split(scanner.Text(), " ") {
+
+			if name == "" {
+				continue
+			}
+
 			if !govalidator.IsDNSName(name) {
 				return make([]string, 0), fmt.Errorf("%s is not valid DNS name", name)
 			}
+
 			result = append(result, name)
 		}
 	}
