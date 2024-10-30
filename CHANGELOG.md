@@ -1,5 +1,9 @@
 # Changelog
 
+## Version v1.1.5
+
+- Comments support in lists
+
 ## Version v1.1.4
 
 - Fix empty lines presence issue in lists

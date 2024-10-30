@@ -202,6 +202,10 @@ func getHostsSlice(path string) ([]string, error) {
 	for scanner.Scan() {
 		for _, name := range strings.Split(scanner.Text(), " ") {
 
+			if strings.HasPrefix(name, "#") {
+				break
+			}
+
 			if name == "" {
 				continue
 			}

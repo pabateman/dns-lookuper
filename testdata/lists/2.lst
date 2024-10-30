@@ -1,4 +1,7 @@
 releases.hashicorp.com rpm.releases.hashicorp.com
-google.com
-linked.in
+
+# I can handle this comment
+google.com # And this comment too!
+linked.in #And this can handle too
+
 hashicorp.com terraform.io
