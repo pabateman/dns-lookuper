@@ -1,5 +1,5 @@
 settings:
-  lookupTimeout: 2
+  lookupTimeout: 15
   daemon:
     enabled: true
     interval: 30s
@@ -7,5 +7,6 @@ tasks:
   - files:
       - ../lists/1.lst
       - ../lists/2.lst
-    output: ../output/daemonconfig.txt
-    format: yaml
+    output: ../output/daemonconfig.json
+    format: json
+    mode: ipv6

@@ -23,17 +23,16 @@ type response struct {
 	Addresses []net.IP `json:"addresses"`
 }
 
-func (t *task) acceptipv4() bool { return t.Mode == modeAll || t.Mode == modeIpv4 }
-func (t *task) acceptipv6() bool { return t.Mode == modeAll || t.Mode == modeIpv6 }
-
-// func (t *task) print(f *os.File) error { return t.printer(f) }
-
 func Lookup(clictx *cli.Context) error {
 
 	config, err := newConfig(clictx)
 	if err != nil {
 		return err
 	}
+
+	log.SetFormatter(&log.TextFormatter{
+		FullTimestamp: true,
+	})
 
 	if config.Settings.DaemonSettings.Enabled {
 		return daemonMode(config)
@@ -51,10 +50,6 @@ func daemonMode(config *Config) error {
 	ticker := time.NewTicker(intervalDuration)
 	defer ticker.Stop()
 
-	log.SetFormatter(&log.TextFormatter{
-		FullTimestamp: true,
-	})
-
 	log.Infof("starting lookup daemon with interval %s", config.Settings.DaemonSettings.Interval)
 
 	errorsChan := make(chan error, 1)
@@ -62,19 +57,27 @@ func daemonMode(config *Config) error {
 	log.Info("perform the very first task walkthrough")
 	err = walkTasks(config)
 	if err != nil {
-		log.Error(err)
+		if config.Settings.Fail {
+			return err
+		} else {
+			log.Warnf("%s, skipping", err)
+		}
 	}
 
 	for {
 		select {
 		case <-ticker.C:
-			log.Infof("lookup time, task walkthrough")
+			log.Infof("perform task walkthrough")
 			err := walkTasks(config)
 			if err != nil {
 				errorsChan <- err
 			}
 		case err := <-errorsChan:
-			log.Error(err)
+			if config.Settings.Fail {
+				return err
+			} else {
+				log.Warnf("%s, skipping", err)
+			}
 		}
 	}
 }
@@ -93,15 +96,10 @@ func walkTasks(config *Config) error {
 
 func performTask(t *task, settings *settings) error {
 	pathsList := t.Files
-
 	names := make([]string, 0)
 
-	resolver := &net.Resolver{}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(settings.LookupTimeout)*time.Second)
-	defer cancel()
-
 	for _, p := range pathsList {
-		fileContent, err := getHostsSlice(getPath(settings, p))
+		fileContent, err := parseDomainNamesLists(getPath(settings, p))
 		if err != nil {
 			return err
 		}
@@ -111,26 +109,28 @@ func performTask(t *task, settings *settings) error {
 	slices.Sort(names)
 	names = slices.Compact(names)
 
+	resolver := &net.Resolver{}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(settings.LookupTimeout)*time.Second)
+	defer cancel()
+
 	responses := make([]response, 0, len(names))
 	for _, name := range names {
-		answer, err := resolver.LookupIP(ctx, "ip", name)
+		answer, err := resolver.LookupIP(ctx, getIPMode(t), name)
 		if err != nil {
-			return err
-		}
-
-		responseFiltered := response{
-			Name:      name,
-			Addresses: make([]net.IP, 0),
-		}
-
-		for _, address := range answer {
-			if (t.acceptipv4() && len(address) == net.IPv4len) ||
-				(t.acceptipv6() && len(address) == net.IPv6len) {
-				responseFiltered.Addresses = append(responseFiltered.Addresses, address)
+			if !strings.HasSuffix(err.Error(), "no suitable address found") {
+				return err
 			}
 		}
 
-		responses = append(responses, responseFiltered)
+		// For proper marshalling
+		if answer == nil {
+			answer = make([]net.IP, 0)
+		}
+
+		responses = append(responses, response{
+			Name:      name,
+			Addresses: answer,
+		})
 	}
 
 	var outputFile *os.File
@@ -181,6 +181,19 @@ func performTask(t *task, settings *settings) error {
 	return nil
 }
 
+func getIPMode(task *task) string {
+	switch task.Mode {
+	case modeIpv4:
+		return "ip4"
+	case modeIpv6:
+		return "ip6"
+	case modeAll:
+		return "ip"
+	default:
+		return "unsupported"
+	}
+}
+
 func getPath(settings *settings, p string) string {
 	if path.IsAbs(p) {
 		return p
@@ -189,7 +202,7 @@ func getPath(settings *settings, p string) string {
 	}
 }
 
-func getHostsSlice(path string) ([]string, error) {
+func parseDomainNamesLists(path string) ([]string, error) {
 	result := make([]string, 0)
 
 	file, err := os.Open(path)
@@ -211,7 +224,7 @@ func getHostsSlice(path string) ([]string, error) {
 			}
 
 			if !govalidator.IsDNSName(name) {
-				return make([]string, 0), fmt.Errorf("%s is not valid DNS name", name)
+				return make([]string, 0), fmt.Errorf("%s from file %s is not valid DNS name", name, path)
 			}
 
 			result = append(result, name)

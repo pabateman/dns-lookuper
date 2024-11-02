@@ -22,6 +22,7 @@ const (
 	argDaemon         = "daemon"
 	argInterval       = "interval"
 	argTimeout        = "timeout"
+	argFail           = "fail"
 )
 
 const (
@@ -59,6 +60,7 @@ type settings struct {
 	dir            string
 	outputConsole  bool
 	LookupTimeout  int             `json:"lookupTimeout"`
+	Fail           bool            `json:"fail"`
 	DaemonSettings *daemonSettings `json:"daemon"`
 }
 
@@ -153,6 +155,12 @@ var (
 			EnvVars: []string{"DNS_LOOKUPER_TIMEOUT"},
 			Value:   timeoutDefault,
 		},
+		&cli.BoolFlag{
+			Name:    argFail,
+			Usage:   "fail on invalid and unreachable names",
+			EnvVars: []string{"DNS_LOOKUPER_FAIL"},
+			Value:   false,
+		},
 	}
 
 	formatEnum     = []string{formatJSON, formatYAML, formatCSV, formatHosts, formatList, formatTemplate}
@@ -168,6 +176,7 @@ func newConfig(clictx *cli.Context) (*Config, error) {
 		Settings: &settings{
 			LookupTimeout: clictx.Int(argTimeout),
 			outputConsole: false,
+			Fail:          clictx.Bool(argFail),
 			DaemonSettings: &daemonSettings{
 				Enabled:  clictx.Bool(argDaemon),
 				Interval: clictx.String(argInterval),
@@ -285,11 +294,12 @@ func validateTask(t *task, s *settings) error {
 		return fmt.Errorf(`you must specify template text at least (--%[1]s or template key in file) when output format is "%[2]s"`, argTemplateText, formatTemplate)
 	}
 
-	if t.Format != formatTemplate &&
-		(t.Template.Text != "" ||
+	if t.Format != formatTemplate && t.Template != nil {
+		if t.Template.Text != "" ||
 			t.Template.Header != "" ||
-			t.Template.Footer != "") {
-		return fmt.Errorf(`template settings allowed only with output format of type "%s"`, formatTemplate)
+			t.Template.Footer != "" {
+			return fmt.Errorf(`template settings allowed only with output format of type "%s"`, formatTemplate)
+		}
 	}
 
 	return nil
