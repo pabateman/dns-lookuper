@@ -1,17 +1,14 @@
 package lookuper
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"net"
 	"os"
 	"path"
-	"slices"
 	"strings"
 	"time"
 
-	"github.com/asaskevich/govalidator"
 	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
 )
@@ -57,11 +54,7 @@ func daemonMode(config *Config) error {
 	log.Info("perform the very first task walkthrough")
 	err = walkTasks(config)
 	if err != nil {
-		if config.Settings.Fail {
-			return err
-		} else {
-			log.Warnf("%s, skipping", err)
-		}
+		return err
 	}
 
 	for {
@@ -73,11 +66,7 @@ func daemonMode(config *Config) error {
 				errorsChan <- err
 			}
 		case err := <-errorsChan:
-			if config.Settings.Fail {
-				return err
-			} else {
-				log.Warnf("%s, skipping", err)
-			}
+			return err
 		}
 	}
 }
@@ -94,30 +83,52 @@ func walkTasks(config *Config) error {
 
 }
 
-func performTask(t *task, settings *settings) error {
+func performTask(t *task, s *settings) error {
 	pathsList := t.Files
-	names := make([]string, 0)
+	domainNames := newDomainNames()
 
 	for _, p := range pathsList {
-		fileContent, err := parseDomainNamesLists(getPath(settings, p))
+		err := domainNames.parseFile(getPath(s, p))
 		if err != nil {
 			return err
 		}
-		names = append(names, fileContent...)
 	}
 
-	slices.Sort(names)
-	names = slices.Compact(names)
+	if len(domainNames.unparsedNames) > 0 {
+		if s.Fail {
+			for file := range domainNames.unparsedNames {
+				log.Errorf("%s from %s is not valid DNS name", strings.Join(domainNames.unparsedNames[file], " "), file)
+			}
+			return fmt.Errorf("error while parsing domain names")
+		} else {
+			for file := range domainNames.unparsedNames {
+				log.Warnf("%s from %s is not valid DNS name, skipping", strings.Join(domainNames.unparsedNames[file], " "), file)
+			}
+		}
+	}
 
 	resolver := &net.Resolver{}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(settings.LookupTimeout)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(s.LookupTimeout)*time.Second)
 	defer cancel()
 
-	responses := make([]response, 0, len(names))
-	for _, name := range names {
+	responses := make([]response, 0, len(domainNames.parsedNames))
+	unresolvedErrors := make([]error, 0)
+
+	for _, name := range domainNames.parsedNames {
 		answer, err := resolver.LookupIP(ctx, getIPMode(t), name)
 		if err != nil {
-			if !strings.HasSuffix(err.Error(), "no suitable address found") {
+			if dnsError, ok := err.(*net.DNSError); ok {
+				if dnsError.IsNotFound || dnsError.IsTimeout {
+					unresolvedErrors = append(unresolvedErrors, err)
+					continue
+				} else {
+					return err
+				}
+			} else if addrError, ok := err.(*net.AddrError); ok {
+				if addrError.Err != "no suitable address found" {
+					return err
+				}
+			} else {
 				return err
 			}
 		}
@@ -133,13 +144,26 @@ func performTask(t *task, settings *settings) error {
 		})
 	}
 
+	if len(unresolvedErrors) > 0 {
+		if s.Fail {
+			for _, err := range unresolvedErrors {
+				log.Error(err)
+			}
+			return fmt.Errorf("error while resolving domain names")
+		} else {
+			for _, err := range unresolvedErrors {
+				log.Warn(err)
+			}
+		}
+	}
+
 	var outputFile *os.File
 	var err error
 
 	if t.Output == "-" || t.Output == "/dev/stdout" {
 		outputFile = os.Stdout
 	} else {
-		outputFile, err = os.Create(getPath(settings, t.Output))
+		outputFile, err = os.Create(getPath(s, t.Output))
 		if err != nil {
 			return err
 		}
@@ -200,36 +224,4 @@ func getPath(settings *settings, p string) string {
 	} else {
 		return path.Join(settings.dir, p)
 	}
-}
-
-func parseDomainNamesLists(path string) ([]string, error) {
-	result := make([]string, 0)
-
-	file, err := os.Open(path)
-	if err != nil {
-		return make([]string, 0), err
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		for _, name := range strings.Split(scanner.Text(), " ") {
-
-			if strings.HasPrefix(name, "#") {
-				break
-			}
-
-			if name == "" {
-				continue
-			}
-
-			if !govalidator.IsDNSName(name) {
-				return make([]string, 0), fmt.Errorf("%s from file %s is not valid DNS name", name, path)
-			}
-
-			result = append(result, name)
-		}
-	}
-
-	return result, nil
 }

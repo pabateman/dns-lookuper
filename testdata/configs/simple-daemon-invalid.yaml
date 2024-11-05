@@ -6,6 +6,7 @@ settings:
     interval: 30s
 tasks:
   - files:
-      - ../lists/invalid.lst
+      - ../lists/invalid_0.lst
+      - ../lists/invalid_1.lst
     output: ../output/daemonconfiginvalid.yaml
     format: yaml
