@@ -1,0 +1,11 @@
+settings:
+  lookupTimeout: 10
+  fail: false
+  daemon:
+    enabled: true
+    interval: 30s
+tasks:
+  - files:
+      - ../lists/invalid.lst
+    output: ../output/daemonconfiginvalid.yaml
+    format: yaml
