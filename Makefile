@@ -2,7 +2,8 @@ export GO111MODULE ?= on
 export CGO_ENABLED ?= 0
 
 PROJECT   ?= dns-lookuper
-REPOPATH  ?= github.com/pabateman/$(PROJECT)
+REPO      ?= github.com/pabateman
+REPOPATH  ?= $(REPO)/$(PROJECT)
 COMMIT    := $(shell git rev-parse HEAD)
 VERSION   ?= $(shell git describe --always --tags)
 GOPATH    ?= $(shell go env GOPATH)
@@ -60,6 +61,10 @@ dist: $(DISTFILE)
 .PHONY: dev
 dev:
 	go build -o $(PROJECT) cmd/$(PROJECT)/main.go
+
+.PHONY: image
+image:
+	docker build -t $(notdir $(REPO))/$(PROJECT):$(ARTIFACT_VERSION) .
 
 PLATFORM_TARGETS := $(PLATFORMS)
 

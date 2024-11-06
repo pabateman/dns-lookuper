@@ -1,9 +1,9 @@
 # Only for local usage
 # GitHub Actions builds images in a different way
-ARG GOLANG_VERSION=1.22
+ARG GOLANG_VERSION=1.23.2
 ARG UBUNTU_VERSION=oracular
 
-FROM golang:${GOLANG_VERSION} as build
+FROM golang:${GOLANG_VERSION} AS build
 
 WORKDIR /go/src/dns-lookuper
 COPY go.mod go.sum ./
@@ -21,7 +21,7 @@ RUN go install \
         -X main.Platform=$(go env GOOS)/$(go env GOARCH)  \
     " ./...
 
-FROM ubuntu:${UBUNTU_VERSION} as runtime
+FROM ubuntu:${UBUNTU_VERSION} AS runtime
 
 COPY --from=build /go/bin/dns-lookuper /dns-lookuper
 ENTRYPOINT [ "/dns-lookuper" ]

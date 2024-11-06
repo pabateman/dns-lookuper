@@ -1,5 +1,9 @@
 # Changelog
 
+## Version v1.1.6
+
+- Application level failures handle
+
 ## Version v1.1.5
 
 - Comments support in lists
