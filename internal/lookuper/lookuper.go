@@ -94,15 +94,15 @@ func performTask(t *task, s *settings) error {
 		}
 	}
 
-	if len(domainNames.unparsedNames) > 0 {
+	if len(domainNames.UnparsedNames) > 0 {
 		if s.Fail {
-			for file := range domainNames.unparsedNames {
-				log.Errorf("%s from %s is not valid DNS name", strings.Join(domainNames.unparsedNames[file], " "), file)
+			for file := range domainNames.UnparsedNames {
+				log.Errorf("%s from %s is not valid DNS name", strings.Join(domainNames.UnparsedNames[file], " "), file)
 			}
 			return fmt.Errorf("error while parsing domain names")
 		} else {
-			for file := range domainNames.unparsedNames {
-				log.Warnf("%s from %s is not valid DNS name, skipping", strings.Join(domainNames.unparsedNames[file], " "), file)
+			for file := range domainNames.UnparsedNames {
+				log.Warnf("%s from %s is not valid DNS name, skipping", strings.Join(domainNames.UnparsedNames[file], " "), file)
 			}
 		}
 	}
@@ -111,10 +111,10 @@ func performTask(t *task, s *settings) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(s.LookupTimeout)*time.Second)
 	defer cancel()
 
-	responses := make([]response, 0, len(domainNames.parsedNames))
+	responses := make([]response, 0, len(domainNames.ParsedNames))
 	unresolvedErrors := make([]error, 0)
 
-	for _, name := range domainNames.parsedNames {
+	for _, name := range domainNames.ParsedNames {
 		answer, err := resolver.LookupIP(ctx, getIPMode(t), name)
 		if err != nil {
 			if dnsError, ok := err.(*net.DNSError); ok {

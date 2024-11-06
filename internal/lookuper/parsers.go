@@ -10,8 +10,8 @@ import (
 )
 
 type domainNames struct {
-	parsedNames   []string
-	unparsedNames map[string][]string
+	ParsedNames   []string
+	UnparsedNames map[string][]string
 }
 
 func newDomainNames() *domainNames {
@@ -41,16 +41,16 @@ func (d *domainNames) parseFile(path string) error {
 			}
 
 			if !govalidator.IsDNSName(name) {
-				d.unparsedNames[path] = append(d.unparsedNames[path], name)
+				d.UnparsedNames[path] = append(d.UnparsedNames[path], name)
 				continue
 			}
 
-			d.parsedNames = append(d.parsedNames, name)
+			d.ParsedNames = append(d.ParsedNames, name)
 		}
 	}
 
-	slices.Sort(d.parsedNames)
-	d.parsedNames = slices.Compact(d.parsedNames)
+	slices.Sort(d.ParsedNames)
+	d.ParsedNames = slices.Compact(d.ParsedNames)
 
 	return nil
 }

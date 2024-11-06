@@ -66,6 +66,10 @@ dev:
 image:
 	docker build -t $(notdir $(REPO))/$(PROJECT):$(ARTIFACT_VERSION) .
 
+.PHONY: test
+test:
+	go test ./... -cover -coverpkg=./... -v
+
 PLATFORM_TARGETS := $(PLATFORMS)
 
 $(PLATFORM_TARGETS):
