@@ -25,6 +25,28 @@ func TestParserBasic(t *testing.T) {
 	require.True(t, reflect.DeepEqual(input.UnparsedNames, expected.UnparsedNames))
 }
 
+func TestParserMultipleFiles(t *testing.T) {
+	input := newDomainNames()
+	err := input.parseFile(path.Join(testDataPath, "lists/1.lst"))
+	require.NoError(t, err)
+	err = input.parseFile(path.Join(testDataPath, "lists/2.lst"))
+	require.NoError(t, err)
+
+	expected := newDomainNames()
+	expected.ParsedNames = []string{
+		"cloudflare.com",
+		"google.com",
+		"hashicorp.com",
+		"linked.in",
+		"releases.hashicorp.com",
+		"rpm.releases.hashicorp.com",
+		"terraform.io",
+	}
+
+	require.True(t, reflect.DeepEqual(input.ParsedNames, expected.ParsedNames))
+	require.True(t, reflect.DeepEqual(input.UnparsedNames, expected.UnparsedNames))
+}
+
 func TestParserEmpty(t *testing.T) {
 	input := newDomainNames()
 	err := input.parseFile(path.Join(testDataPath, "lists/empty.lst"))
