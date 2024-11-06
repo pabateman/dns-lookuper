@@ -163,10 +163,38 @@ var (
 		},
 	}
 
-	formatEnum     = []string{formatJSON, formatYAML, formatCSV, formatHosts, formatList, formatTemplate}
-	modeEnum       = []string{modeAll, modeIpv4, modeIpv6}
-	argsConfigFile = []string{argConfig}
-	argCmdLine     = []string{argDaemon, argFile, argFormat, argInterval, argMode, argOutput, argTemplateText, argTemplateFooter, argTemplateHeader, argTimeout}
+	formatEnum = []string{
+		formatJSON,
+		formatYAML,
+		formatCSV,
+		formatHosts,
+		formatList,
+		formatTemplate,
+	}
+
+	modeEnum = []string{
+		modeAll,
+		modeIpv4,
+		modeIpv6,
+	}
+
+	argsConfigFile = []string{
+		argConfig,
+	}
+
+	argCmdLine = []string{
+		argDaemon,
+		argFile,
+		argFormat,
+		argInterval,
+		argMode,
+		argOutput,
+		argTemplateText,
+		argTemplateFooter,
+		argTemplateHeader,
+		argTimeout,
+		argFile,
+	}
 )
 
 func newConfig(clictx *cli.Context) (*Config, error) {
