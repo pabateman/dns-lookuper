@@ -23,9 +23,9 @@ const (
 )
 
 type Printer struct {
-	Template *Template
-	Entries  []resolver.Response
-	Writer   io.Writer
+	template *Template
+	entries  []resolver.Response
+	writer   io.Writer
 	fn       func() error
 }
 
@@ -46,63 +46,93 @@ var (
 	}
 )
 
-func (p *Printer) SetFormat(f string) error {
+func NewPrinter() *Printer {
+	return &Printer{
+		template: nil,
+		entries:  make([]resolver.Response, 0),
+		writer:   nil,
+		fn:       nil,
+	}
+}
+
+func (p *Printer) WithTemplate(t *Template) *Printer {
+	p.template = t
+	return p
+}
+
+func (p *Printer) WithOutput(w io.Writer) *Printer {
+	p.writer = w
+	return p
+}
+
+func (p *Printer) WithEntries(e []resolver.Response) *Printer {
+	p.entries = e
+	return p
+}
+
+func (p *Printer) WithFormat(f string) *Printer {
 	switch f {
 	case FormatTemplate:
 		p.fn = p.printTemplate
 	case FormatList:
 		p.fn = p.printList
 	case FormatHosts:
-		p.Template = templateHosts
+		p.template = templateHosts
 		p.fn = p.printTemplate
 	case FormatJSON:
 		p.fn = p.printJSON
 	case FormatYAML:
 		p.fn = p.printYAML
 	case FormatCSV:
-		p.Template = templateCSV
+		p.template = templateCSV
 		p.fn = p.printTemplate
 	default:
-		return fmt.Errorf("unknown output format %s", f)
+		p.fn = p.printList
 	}
-
-	return nil
+	return p
 }
 
 func (p *Printer) Print() error {
+	if p.fn == nil {
+		return fmt.Errorf("missing print function")
+	}
+
+	if p.writer == nil {
+		return fmt.Errorf("missing output file")
+	}
 	return p.fn()
 }
 
 func (p *Printer) printTemplate() error {
-	if p.Template == nil {
+	if p.template == nil {
 		return fmt.Errorf("missing template")
 	}
-	t, err := fasttemplate.NewTemplate(p.Template.Text, "{{", "}}")
+	t, err := fasttemplate.NewTemplate(p.template.Text, "{{", "}}")
 	if err != nil {
 		return err
 	}
 
-	if p.Template.Header != "" {
-		if _, err := io.WriteString(p.Writer, fmt.Sprintln(p.Template.Header)); err != nil {
+	if p.template.Header != "" {
+		if _, err := io.WriteString(p.writer, fmt.Sprintln(p.template.Header)); err != nil {
 			return err
 		}
 	}
 
-	for _, response := range p.Entries {
+	for _, response := range p.entries {
 		for _, address := range response.Addresses {
 			s := t.ExecuteString(map[string]interface{}{
 				"host":    response.Name,
 				"address": address.String(),
 			})
 
-			if _, err := io.WriteString(p.Writer, fmt.Sprintln(s)); err != nil {
+			if _, err := io.WriteString(p.writer, fmt.Sprintln(s)); err != nil {
 				return err
 			}
 		}
 	}
 
-	if p.Template.Footer != "" {
-		if _, err := io.WriteString(p.Writer, fmt.Sprintln(p.Template.Footer)); err != nil {
+	if p.template.Footer != "" {
+		if _, err := io.WriteString(p.writer, fmt.Sprintln(p.template.Footer)); err != nil {
 			return err
 		}
 	}
@@ -112,7 +142,7 @@ func (p *Printer) printTemplate() error {
 func (p *Printer) printList() error {
 	addresses := make([]string, 0)
 
-	for _, response := range p.Entries {
+	for _, response := range p.entries {
 		for _, address := range response.Addresses {
 			addresses = append(addresses, address.String())
 		}
@@ -122,7 +152,7 @@ func (p *Printer) printList() error {
 	addresses = slices.Compact(addresses)
 
 	for _, address := range addresses {
-		if _, err := io.WriteString(p.Writer, fmt.Sprintln(address)); err != nil {
+		if _, err := io.WriteString(p.writer, fmt.Sprintln(address)); err != nil {
 			return err
 		}
 
@@ -132,12 +162,12 @@ func (p *Printer) printList() error {
 }
 
 func (p *Printer) printJSON() error {
-	encoded, err := json.MarshalIndent(p.Entries, "", "  ")
+	encoded, err := json.MarshalIndent(p.entries, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	_, err = p.Writer.Write(encoded)
+	_, err = p.writer.Write(encoded)
 	if err != nil {
 		return err
 	}
@@ -146,12 +176,12 @@ func (p *Printer) printJSON() error {
 }
 
 func (p *Printer) printYAML() error {
-	encoded, err := yaml.Marshal(p.Entries)
+	encoded, err := yaml.Marshal(p.entries)
 	if err != nil {
 		return err
 	}
 
-	_, err = p.Writer.Write(encoded)
+	_, err = p.writer.Write(encoded)
 	if err != nil {
 		return err
 	}

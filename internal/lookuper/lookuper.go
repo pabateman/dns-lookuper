@@ -109,7 +109,10 @@ func performTask(t *task, s *settings) error {
 		return fmt.Errorf("error while parsing lookup timeout: %+v", err)
 	}
 
-	resolver := resolver.NewResolver().WithMode(t.Mode).WithTimeout(lookupTimeout)
+	resolver := resolver.NewResolver().
+		WithMode(t.Mode).
+		WithTimeout(lookupTimeout)
+
 	responses, err := resolver.Resolve(domainNames.ParsedNames)
 	if err != nil {
 		return fmt.Errorf("error while resolving domain name: %+v", err)
@@ -150,20 +153,15 @@ func performTask(t *task, s *settings) error {
 		defer outputFile.Close()
 	}
 
-	printer := &printer.Printer{
-		Template: t.Template,
-		Entries:  responses,
-		Writer:   outputFile,
-	}
-
-	err = printer.SetFormat(t.Format)
-	if err != nil {
-		return err
-	}
+	printer := printer.NewPrinter().
+		WithEntries(responses).
+		WithFormat(t.Format).
+		WithTemplate(t.Template).
+		WithOutput(outputFile)
 
 	err = printer.Print()
 	if err != nil {
-		return err
+		return fmt.Errorf("error while writing result:%+v", err)
 	}
 
 	return nil
