@@ -1,5 +1,5 @@
 settings:
-  lookupTimeout: 15
+  lookupTimeout: 10s
   daemon:
     enabled: true
     interval: 30s

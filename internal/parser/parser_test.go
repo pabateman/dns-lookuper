@@ -1,4 +1,4 @@
-package lookuper
+package parser
 
 import (
 	"path"
@@ -14,11 +14,11 @@ var (
 )
 
 func TestParserBasic(t *testing.T) {
-	input := newDomainNames()
-	err := input.parseFile(path.Join(testDataPath, "lists/1.lst"))
+	input := NewDomainNames()
+	err := input.ParseFile(path.Join(testDataPath, "lists/1.lst"))
 	require.NoError(t, err)
 
-	expected := newDomainNames()
+	expected := NewDomainNames()
 	expected.ParsedNames = basicList
 
 	require.True(t, reflect.DeepEqual(input.ParsedNames, expected.ParsedNames))
@@ -26,13 +26,13 @@ func TestParserBasic(t *testing.T) {
 }
 
 func TestParserMultipleFiles(t *testing.T) {
-	input := newDomainNames()
-	err := input.parseFile(path.Join(testDataPath, "lists/1.lst"))
+	input := NewDomainNames()
+	err := input.ParseFile(path.Join(testDataPath, "lists/1.lst"))
 	require.NoError(t, err)
-	err = input.parseFile(path.Join(testDataPath, "lists/2.lst"))
+	err = input.ParseFile(path.Join(testDataPath, "lists/2.lst"))
 	require.NoError(t, err)
 
-	expected := newDomainNames()
+	expected := NewDomainNames()
 	expected.ParsedNames = []string{
 		"cloudflare.com",
 		"google.com",
@@ -48,22 +48,22 @@ func TestParserMultipleFiles(t *testing.T) {
 }
 
 func TestParserEmpty(t *testing.T) {
-	input := newDomainNames()
-	err := input.parseFile(path.Join(testDataPath, "lists/empty.lst"))
+	input := NewDomainNames()
+	err := input.ParseFile(path.Join(testDataPath, "lists/empty.lst"))
 	require.NoError(t, err)
 
-	expected := newDomainNames()
+	expected := NewDomainNames()
 
 	require.True(t, reflect.DeepEqual(input.ParsedNames, expected.ParsedNames))
 	require.True(t, reflect.DeepEqual(input.UnparsedNames, expected.UnparsedNames))
 }
 
 func TestParserComments(t *testing.T) {
-	input := newDomainNames()
-	err := input.parseFile(path.Join(testDataPath, "lists/1.lst"))
+	input := NewDomainNames()
+	err := input.ParseFile(path.Join(testDataPath, "lists/1.lst"))
 	require.NoError(t, err)
 
-	expected := newDomainNames()
+	expected := NewDomainNames()
 	expected.ParsedNames = basicList
 
 	require.True(t, reflect.DeepEqual(input.ParsedNames, expected.ParsedNames))
@@ -76,13 +76,13 @@ func TestParserInvalid(t *testing.T) {
 		path.Join(testDataPath, "lists/invalid_1.lst"),
 	}
 
-	input := newDomainNames()
-	err := input.parseFile(invalidPaths[0])
+	input := NewDomainNames()
+	err := input.ParseFile(invalidPaths[0])
 	require.NoError(t, err)
-	err = input.parseFile(invalidPaths[1])
+	err = input.ParseFile(invalidPaths[1])
 	require.NoError(t, err)
 
-	expected := newDomainNames()
+	expected := NewDomainNames()
 	expected.ParsedNames = []string{"cncf.io", "docker.com", "github.com", "iana.org", "stackoverflow.com", "stackstatus.net"}
 	expected.UnparsedNames[invalidPaths[0]] = []string{
 		"invalid$name",
@@ -97,7 +97,7 @@ func TestParserInvalid(t *testing.T) {
 }
 
 func TestParserNonExistingFile(t *testing.T) {
-	input := newDomainNames()
-	err := input.parseFile(path.Join(testDataPath, "lists/this_file_does_not_exist.lst"))
+	input := NewDomainNames()
+	err := input.ParseFile(path.Join(testDataPath, "lists/this_file_does_not_exist.lst"))
 	require.Error(t, err)
 }

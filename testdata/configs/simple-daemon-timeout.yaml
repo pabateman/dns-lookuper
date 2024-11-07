@@ -1,6 +1,6 @@
 settings:
-  lookupTimeout: 10
-  fail: true
+  lookupTimeout: 10s
+  fail: false
   daemon:
     enabled: true
     interval: 30s

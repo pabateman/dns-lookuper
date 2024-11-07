@@ -7,6 +7,8 @@ import (
 	"slices"
 
 	"github.com/ghodss/yaml"
+	"github.com/pabateman/dns-lookuper/internal/printer"
+	"github.com/pabateman/dns-lookuper/internal/resolver"
 	cli "github.com/urfave/cli/v2"
 )
 
@@ -26,32 +28,14 @@ const (
 )
 
 const (
-	modeIpv4    = "ipv4"
-	modeIpv6    = "ipv6"
-	modeAll     = "all"
-	modeDefault = modeAll
-)
-
-const (
-	formatJSON     = "json"
-	formatYAML     = "yaml"
-	formatCSV      = "csv"
-	formatHosts    = "hosts"
-	formatList     = "list"
-	formatTemplate = "template"
-	formatDefault  = formatHosts
-)
-
-const (
 	daemonEnabledDefault  = false
 	daemonIntervalDefault = "1m"
+	timeoutDefault        = resolver.TimeoutDefault
+	formatDefault         = printer.FormatDefault
+	modeDefault           = resolver.ModeDefault
 )
 
-const (
-	timeoutDefault = 15
-)
-
-type Config struct {
+type config struct {
 	Settings *settings `json:"settings"`
 	Tasks    []task    `json:"tasks"`
 }
@@ -59,7 +43,7 @@ type Config struct {
 type settings struct {
 	dir            string
 	outputConsole  bool
-	LookupTimeout  int             `json:"lookupTimeout"`
+	LookupTimeout  string          `json:"lookupTimeout"`
 	Fail           bool            `json:"fail"`
 	DaemonSettings *daemonSettings `json:"daemon"`
 }
@@ -70,17 +54,11 @@ type daemonSettings struct {
 }
 
 type task struct {
-	Files    []string  `json:"files"`
-	Output   string    `json:"output"`
-	Mode     string    `json:"mode"`
-	Format   string    `json:"format"`
-	Template *template `json:"template"`
-}
-
-type template struct {
-	Text   string `json:"text"`
-	Header string `json:"header"`
-	Footer string `json:"footer"`
+	Files    []string          `json:"files"`
+	Output   string            `json:"output"`
+	Mode     string            `json:"mode"`
+	Format   string            `json:"format"`
+	Template *printer.Template `json:"template"`
 }
 
 var (
@@ -100,7 +78,7 @@ var (
 		},
 		&cli.StringFlag{
 			Name:    argMode,
-			Usage:   fmt.Sprintf("accept one of values: '%s', '%s' or '%s'", modeIpv4, modeIpv6, modeAll),
+			Usage:   fmt.Sprintf("accept one of values: '%s', '%s' or '%s'", resolver.ModeIpv4, resolver.ModeIpv6, resolver.ModeAll),
 			Aliases: []string{"m"},
 			EnvVars: []string{"DNS_LOOKUPER_MODE"},
 			Value:   modeDefault,
@@ -114,7 +92,7 @@ var (
 		},
 		&cli.StringFlag{
 			Name:    argTemplateText,
-			Usage:   fmt.Sprintf("output template text; required with --%s=%s", argFormat, formatTemplate),
+			Usage:   fmt.Sprintf("output template text; required with --%s=%s", argFormat, printer.FormatTemplate),
 			Aliases: []string{"t"},
 			EnvVars: []string{"DNS_LOOKUPER_TEMPLATE_TEXT"},
 		},
@@ -148,9 +126,9 @@ var (
 			EnvVars: []string{"DNS_LOOKUPER_INTERVAL"},
 			Value:   daemonIntervalDefault,
 		},
-		&cli.IntFlag{
+		&cli.DurationFlag{
 			Name:    argTimeout,
-			Usage:   "lookup timeout in seconds",
+			Usage:   "lookup timeout in duration format like 1m, 5y, 15s etc",
 			Aliases: []string{"w"},
 			EnvVars: []string{"DNS_LOOKUPER_TIMEOUT"},
 			Value:   timeoutDefault,
@@ -164,18 +142,18 @@ var (
 	}
 
 	formatEnum = []string{
-		formatJSON,
-		formatYAML,
-		formatCSV,
-		formatHosts,
-		formatList,
-		formatTemplate,
+		printer.FormatJSON,
+		printer.FormatYAML,
+		printer.FormatCSV,
+		printer.FormatHosts,
+		printer.FormatList,
+		printer.FormatTemplate,
 	}
 
 	modeEnum = []string{
-		modeAll,
-		modeIpv4,
-		modeIpv6,
+		resolver.ModeAll,
+		resolver.ModeIpv4,
+		resolver.ModeIpv6,
 	}
 
 	argsConfigFile = []string{
@@ -197,12 +175,12 @@ var (
 	}
 )
 
-func newConfig(clictx *cli.Context) (*Config, error) {
+func newConfig(clictx *cli.Context) (*config, error) {
 
-	result := &Config{
+	result := &config{
 		Tasks: make([]task, 0),
 		Settings: &settings{
-			LookupTimeout: clictx.Int(argTimeout),
+			LookupTimeout: clictx.Duration(argTimeout).String(),
 			outputConsole: false,
 			Fail:          clictx.Bool(argFail),
 			DaemonSettings: &daemonSettings{
@@ -236,7 +214,7 @@ func newConfig(clictx *cli.Context) (*Config, error) {
 			Output: clictx.String(argOutput),
 			Mode:   clictx.String(argMode),
 			Format: clictx.String(argFormat),
-			Template: &template{
+			Template: &printer.Template{
 				Header: clictx.String(argTemplateHeader),
 				Text:   clictx.String(argTemplateText),
 				Footer: clictx.String(argTemplateFooter),
@@ -318,15 +296,15 @@ func validateTask(t *task, s *settings) error {
 		return fmt.Errorf("unsupported output format %s; valid formats are %s", t.Format, formatEnum)
 	}
 
-	if t.Format == formatTemplate && t.Template.Text == "" {
-		return fmt.Errorf(`you must specify template text at least (--%[1]s or template key in file) when output format is "%[2]s"`, argTemplateText, formatTemplate)
+	if t.Format == printer.FormatTemplate && t.Template.Text == "" {
+		return fmt.Errorf(`you must specify template text at least (--%[1]s or template key in file) when output format is "%[2]s"`, argTemplateText, printer.FormatTemplate)
 	}
 
-	if t.Format != formatTemplate && t.Template != nil {
+	if t.Format != printer.FormatTemplate && t.Template != nil {
 		if t.Template.Text != "" ||
 			t.Template.Header != "" ||
 			t.Template.Footer != "" {
-			return fmt.Errorf(`template settings allowed only with output format of type "%s"`, formatTemplate)
+			return fmt.Errorf(`template settings allowed only with output format of type "%s"`, printer.FormatTemplate)
 		}
 	}
 

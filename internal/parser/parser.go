@@ -1,4 +1,4 @@
-package lookuper
+package parser
 
 import (
 	"bufio"
@@ -9,19 +9,19 @@ import (
 	"github.com/asaskevich/govalidator"
 )
 
-type domainNames struct {
+type DomainNames struct {
 	ParsedNames   []string
 	UnparsedNames map[string][]string
 }
 
-func newDomainNames() *domainNames {
-	return &domainNames{
+func NewDomainNames() *DomainNames {
+	return &DomainNames{
 		make([]string, 0),
 		make(map[string][]string),
 	}
 }
 
-func (d *domainNames) parseFile(path string) error {
+func (d *DomainNames) ParseFile(path string) error {
 	file, err := os.Open(path)
 	if err != nil {
 		return err

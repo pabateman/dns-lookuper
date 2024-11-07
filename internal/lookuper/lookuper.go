@@ -1,24 +1,21 @@
 package lookuper
 
 import (
-	"context"
 	"fmt"
-	"net"
 	"os"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/pabateman/dns-lookuper/internal/parser"
+	"github.com/pabateman/dns-lookuper/internal/printer"
+	"github.com/pabateman/dns-lookuper/internal/resolver"
 
 	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
 )
 
 const LookupTimeoutSeconds = 15
-
-type response struct {
-	Name      string   `json:"name"`
-	Addresses []net.IP `json:"addresses"`
-}
 
 func Lookup(clictx *cli.Context) error {
 
@@ -38,7 +35,7 @@ func Lookup(clictx *cli.Context) error {
 	}
 }
 
-func daemonMode(config *Config) error {
+func daemonMode(config *config) error {
 	intervalDuration, err := time.ParseDuration(config.Settings.DaemonSettings.Interval)
 	if err != nil {
 		return err
@@ -71,7 +68,7 @@ func daemonMode(config *Config) error {
 	}
 }
 
-func walkTasks(config *Config) error {
+func walkTasks(config *config) error {
 	for _, task := range config.Tasks {
 		err := performTask(&task, config.Settings)
 		if err != nil {
@@ -85,12 +82,12 @@ func walkTasks(config *Config) error {
 
 func performTask(t *task, s *settings) error {
 	pathsList := t.Files
-	domainNames := newDomainNames()
+	domainNames := parser.NewDomainNames()
 
 	for _, p := range pathsList {
-		err := domainNames.parseFile(getPath(s, p))
+		err := domainNames.ParseFile(getPath(s, p))
 		if err != nil {
-			return err
+			return fmt.Errorf("error while parsing domain names list from %s: %+v", p, err)
 		}
 	}
 
@@ -107,41 +104,23 @@ func performTask(t *task, s *settings) error {
 		}
 	}
 
-	resolver := &net.Resolver{}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(s.LookupTimeout)*time.Second)
-	defer cancel()
+	lookupTimeout, err := time.ParseDuration(s.LookupTimeout)
+	if err != nil {
+		return fmt.Errorf("error while parsing lookup timeout: %+v", err)
+	}
 
-	responses := make([]response, 0, len(domainNames.ParsedNames))
+	resolver := resolver.NewResolver().WithMode(t.Mode).WithTimeout(lookupTimeout)
+	responses, err := resolver.Resolve(domainNames.ParsedNames)
+	if err != nil {
+		return fmt.Errorf("error while resolving domain name: %+v", err)
+	}
+
 	unresolvedErrors := make([]error, 0)
 
-	for _, name := range domainNames.ParsedNames {
-		answer, err := resolver.LookupIP(ctx, getIPMode(t), name)
-		if err != nil {
-			if dnsError, ok := err.(*net.DNSError); ok {
-				if dnsError.IsNotFound || dnsError.IsTimeout {
-					unresolvedErrors = append(unresolvedErrors, err)
-					continue
-				} else {
-					return err
-				}
-			} else if addrError, ok := err.(*net.AddrError); ok {
-				if addrError.Err != "no suitable address found" {
-					return err
-				}
-			} else {
-				return err
-			}
+	for _, r := range responses {
+		if r.Error != nil {
+			unresolvedErrors = append(unresolvedErrors, r.Error)
 		}
-
-		// For proper marshalling
-		if answer == nil {
-			answer = make([]net.IP, 0)
-		}
-
-		responses = append(responses, response{
-			Name:      name,
-			Addresses: answer,
-		})
 	}
 
 	if len(unresolvedErrors) > 0 {
@@ -149,7 +128,7 @@ func performTask(t *task, s *settings) error {
 			for _, err := range unresolvedErrors {
 				log.Error(err)
 			}
-			return fmt.Errorf("error while resolving domain names")
+			return fmt.Errorf("encountered errors while resolving domain names")
 		} else {
 			for _, err := range unresolvedErrors {
 				log.Warn(err)
@@ -158,7 +137,6 @@ func performTask(t *task, s *settings) error {
 	}
 
 	var outputFile *os.File
-	var err error
 
 	if t.Output == "-" || t.Output == "/dev/stdout" {
 		outputFile = os.Stdout
@@ -172,50 +150,23 @@ func performTask(t *task, s *settings) error {
 		defer outputFile.Close()
 	}
 
-	printer := &printer{
-		task:         t,
-		responseList: responses,
-		file:         outputFile,
+	printer := &printer.Printer{
+		Template: t.Template,
+		Entries:  responses,
+		Writer:   outputFile,
 	}
 
-	switch t.Format {
-	case formatTemplate:
-		printer.fn = printer.printTemplate
-	case formatList:
-		printer.fn = printer.printList
-	case formatHosts:
-		printer.task.Template = templateHosts
-		printer.fn = printer.printTemplate
-	case formatJSON:
-		printer.fn = printer.printJSON
-	case formatYAML:
-		printer.fn = printer.printYAML
-	case formatCSV:
-		printer.task.Template = templateCSV
-		printer.fn = printer.printTemplate
-	default:
-		return fmt.Errorf(`invalid output format "%s"`, t.Format)
+	err = printer.SetFormat(t.Format)
+	if err != nil {
+		return err
 	}
 
-	err = printer.print()
+	err = printer.Print()
 	if err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func getIPMode(task *task) string {
-	switch task.Mode {
-	case modeIpv4:
-		return "ip4"
-	case modeIpv6:
-		return "ip6"
-	case modeAll:
-		return "ip"
-	default:
-		return "unsupported"
-	}
 }
 
 func getPath(settings *settings, p string) string {
