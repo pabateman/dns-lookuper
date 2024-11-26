@@ -60,7 +60,8 @@ func TestPrinterBasic(t *testing.T) {
 
 	b.Reset()
 	p.WithFormat(FormatCSV)
-	p.Print()
+	err = p.Print()
+	require.Nil(t, err)
 
 	expected, err = getExpected(path.Join(expectedContentDirectory, "csv.csv"))
 	require.Nil(t, err)
@@ -69,7 +70,8 @@ func TestPrinterBasic(t *testing.T) {
 
 	b.Reset()
 	p.WithFormat(FormatYAML)
-	p.Print()
+	err = p.Print()
+	require.Nil(t, err)
 
 	expected, err = getExpected(path.Join(expectedContentDirectory, "yaml.yaml"))
 	require.Nil(t, err)
@@ -78,7 +80,8 @@ func TestPrinterBasic(t *testing.T) {
 
 	b.Reset()
 	p.WithFormat(FormatJSON)
-	p.Print()
+	err = p.Print()
+	require.Nil(t, err)
 
 	expected, err = getExpected(path.Join(expectedContentDirectory, "json.json"))
 	require.Nil(t, err)
@@ -87,7 +90,8 @@ func TestPrinterBasic(t *testing.T) {
 
 	b.Reset()
 	p.WithFormat(FormatHosts)
-	p.Print()
+	err = p.Print()
+	require.Nil(t, err)
 
 	expected, err = getExpected(path.Join(expectedContentDirectory, "hosts"))
 	require.Nil(t, err)
@@ -101,9 +105,114 @@ func TestPrinterBasic(t *testing.T) {
 		Header: "hello from the header",
 		Footer: "hello from the footer",
 	})
-	p.Print()
+	err = p.Print()
+	require.Nil(t, err)
 
 	expected, err = getExpected(path.Join(expectedContentDirectory, "template.txt"))
+	require.Nil(t, err)
+
+	require.Equal(t, expected, b.String())
+}
+
+func TestPrinterCorner(t *testing.T) {
+	p := NewPrinter()
+	err := p.Print()
+	require.EqualError(t, err, "missing print function")
+
+	p.WithFormat("foobarbuzz")
+	err = p.Print()
+	require.EqualError(t, err, "missing output file")
+
+	var b bytes.Buffer
+	p.WithOutput(&b)
+
+	err = p.Print()
+	require.Nil(t, err)
+
+	require.Equal(t, "", b.String())
+
+	p.WithEntries(entries)
+	err = p.Print()
+	require.Nil(t, err)
+
+	expected, err := getExpected(path.Join(expectedContentDirectory, "list.txt"))
+	require.Nil(t, err)
+
+	require.Equal(t, expected, b.String())
+}
+
+func TestPrinterTemplate(t *testing.T) {
+	var b bytes.Buffer
+	p := NewPrinter().WithFormat(FormatTemplate).WithOutput(&b)
+
+	err := p.Print()
+	require.EqualError(t, err, "missing template")
+
+	template := &Template{
+		Text:   "this is {{host}} with address {{address}}",
+		Header: "hello from the header",
+		Footer: "hello from the footer",
+	}
+
+	p.WithTemplate(template)
+	err = p.Print()
+	require.Nil(t, err)
+
+	expected, err := getExpected(path.Join(expectedContentDirectory, "template_bodyless.txt"))
+	require.Nil(t, err)
+
+	require.Equal(t, expected, b.String())
+
+	b.Reset()
+	template.Text = ""
+	err = p.Print()
+	require.Nil(t, err)
+
+	require.Equal(t, expected, b.String())
+
+	b.Reset()
+	p.WithEntries(entries)
+	err = p.Print()
+	require.Nil(t, err)
+
+	require.Equal(t, expected, b.String())
+
+	b.Reset()
+	template.Text = "this is {{host}} with address {{address}}"
+	err = p.Print()
+	require.Nil(t, err)
+
+	expected, err = getExpected(path.Join(expectedContentDirectory, "template.txt"))
+	require.Nil(t, err)
+
+	require.Equal(t, expected, b.String())
+
+	b.Reset()
+	template.Footer = ""
+	err = p.Print()
+	require.Nil(t, err)
+
+	expected, err = getExpected(path.Join(expectedContentDirectory, "template_footless.txt"))
+	require.Nil(t, err)
+
+	require.Equal(t, expected, b.String())
+
+	b.Reset()
+	template.Header = ""
+	err = p.Print()
+	require.Nil(t, err)
+
+	expected, err = getExpected(path.Join(expectedContentDirectory, "template_headless_footless.txt"))
+	require.Nil(t, err)
+
+	require.Equal(t, expected, b.String())
+
+	b.Reset()
+	template.Footer = "hello from the footer"
+	err = p.Print()
+	require.Nil(t, err)
+
+	expected, err = getExpected(path.Join(expectedContentDirectory, "template_headless.txt"))
 	require.Nil(t, err)
 
 	require.Equal(t, expected, b.String())

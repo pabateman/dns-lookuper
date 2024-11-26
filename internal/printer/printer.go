@@ -118,15 +118,17 @@ func (p *Printer) printTemplate() error {
 		}
 	}
 
-	for _, response := range p.entries {
-		for _, address := range response.Addresses {
-			s := t.ExecuteString(map[string]interface{}{
-				"host":    response.Name,
-				"address": address.String(),
-			})
+	if p.template.Text != "" {
+		for _, response := range p.entries {
+			for _, address := range response.Addresses {
+				s := t.ExecuteString(map[string]interface{}{
+					"host":    response.Name,
+					"address": address.String(),
+				})
 
-			if _, err := io.WriteString(p.writer, fmt.Sprintln(s)); err != nil {
-				return err
+				if _, err := io.WriteString(p.writer, fmt.Sprintln(s)); err != nil {
+					return err
+				}
 			}
 		}
 	}
