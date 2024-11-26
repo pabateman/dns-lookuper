@@ -167,6 +167,9 @@ func (p *Printer) printJSON() error {
 		return err
 	}
 
+	// For empty line at the end
+	encoded = append(encoded, byte('\n'))
+
 	_, err = p.writer.Write(encoded)
 	if err != nil {
 		return err
