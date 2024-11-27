@@ -39,3 +39,20 @@ func TestBasicResolver(t *testing.T) {
 
 	require.Equal(t, expectedValid, responsesValid)
 }
+
+func TestMode(t *testing.T) {
+	mode := getIPMode(ModeIpv4)
+	require.Equal(t, "ip4", mode)
+
+	mode = getIPMode(ModeIpv6)
+	require.Equal(t, "ip6", mode)
+
+	mode = getIPMode(ModeAll)
+	require.Equal(t, "ip", mode)
+
+	mode = getIPMode("foobarbuzz")
+	require.Equal(t, "unsupported", mode)
+
+	mode = getIPMode("")
+	require.Equal(t, "unsupported", mode)
+}
