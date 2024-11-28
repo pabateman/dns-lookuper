@@ -159,7 +159,7 @@ func TestMode(t *testing.T) {
 }
 
 func TestErrorResponses(t *testing.T) {
-	r := NewResolver()
+	r := NewResolver().WithTimeout(time.Second * 5)
 
 	responses, err := r.Resolve(dnOnlyIPv4)
 	require.Nil(t, err)
@@ -177,7 +177,7 @@ func TestErrorResponses(t *testing.T) {
 }
 
 func TestInvalidDN(t *testing.T) {
-	r := NewResolver()
+	r := NewResolver().WithTimeout(time.Second * 5)
 
 	responses, err := r.Resolve(dnNonExistent)
 	require.Nil(t, err)
@@ -186,7 +186,7 @@ func TestInvalidDN(t *testing.T) {
 }
 
 func TestTimeout(t *testing.T) {
-	r := NewResolver().WithTimeout(time.Microsecond)
+	r := NewResolver().WithTimeout(time.Microsecond * 10)
 
 	response, err := r.Resolve([]string{dnValid[0]})
 	require.Nil(t, err)
