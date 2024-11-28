@@ -4,6 +4,7 @@ import (
 	"net"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -13,6 +14,17 @@ var (
 		"iana.org",
 		"kernel.org",
 	}
+
+	dnOnlyIPv4 = []string{
+		"fedora.com",
+		"hashicorp.com",
+	}
+
+	dnNonExistent = []string{
+		"foo.iana.org",
+		"bar.kernel.org",
+	}
+
 	expectedValid = []Response{
 		{
 			Name: "iana.org",
@@ -29,6 +41,44 @@ var (
 				{38, 4, 19, 128, 70, 65, 197, 0, 0, 0, 0, 0, 0, 0, 0, 1},
 			},
 			Error: nil,
+		},
+	}
+
+	expectedOnlyIPv4 = []Response{
+		{
+			Name: "fedora.com",
+			Addresses: []net.IP{
+				{86, 105, 245, 69},
+			},
+			Error: nil,
+		},
+		{
+			Name: "hashicorp.com",
+			Addresses: []net.IP{
+				{76, 76, 21, 21},
+			},
+			Error: nil,
+		},
+	}
+
+	expectedNonExistend = []Response{
+		{
+			Name:      "foo.iana.org",
+			Addresses: []net.IP{},
+			Error: &net.DNSError{
+				Name:       "foo.iana.org",
+				Err:        "no such host",
+				IsNotFound: true,
+			},
+		},
+		{
+			Name:      "bar.kernel.org",
+			Addresses: []net.IP{},
+			Error: &net.DNSError{
+				Name:       "bar.kernel.org",
+				Err:        "no such host",
+				IsNotFound: true,
+			},
 		},
 	}
 )
@@ -106,4 +156,49 @@ func TestMode(t *testing.T) {
 
 	require.Equal(t, expectedIPv6, responses)
 
+}
+
+func TestErrorResponses(t *testing.T) {
+	r := NewResolver()
+
+	responses, err := r.Resolve(dnOnlyIPv4)
+	require.Nil(t, err)
+
+	require.Equal(t, responses, expectedOnlyIPv4)
+
+	r.WithMode(ModeIpv6)
+	responses, err = r.Resolve(dnOnlyIPv4)
+	require.Nil(t, err)
+
+	expectedIPv6 := deepCopyResponses(expectedOnlyIPv4)
+	expectedIPv6 = filterResponses(expectedIPv6, notIPv6)
+
+	require.Equal(t, expectedIPv6, responses)
+}
+
+func TestInvalidDN(t *testing.T) {
+	r := NewResolver()
+
+	responses, err := r.Resolve(dnNonExistent)
+	require.Nil(t, err)
+
+	require.Equal(t, expectedNonExistend, responses)
+}
+
+func TestTimeout(t *testing.T) {
+	r := NewResolver().WithTimeout(time.Microsecond)
+
+	response, err := r.Resolve([]string{dnValid[0]})
+	require.Nil(t, err)
+
+	dnsErr, ok := response[0].Error.(*net.DNSError)
+
+	require.True(t, ok)
+	require.NotNil(t, dnsErr)
+
+	require.True(t, dnsErr.IsTemporary)
+	require.True(t, dnsErr.IsTimeout)
+	require.False(t, dnsErr.IsNotFound)
+	require.Equal(t, dnsErr.Name, "iana.org")
+	require.Equal(t, dnsErr.Err, "i/o timeout")
 }
