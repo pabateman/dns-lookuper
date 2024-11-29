@@ -8,7 +8,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/pabateman/dns-lookuper/internal/printer"
-	"github.com/pabateman/dns-lookuper/internal/resolver"
+	"github.com/pabateman/dns-lookuper/internal/resolver/v1"
 	cli "github.com/urfave/cli/v2"
 )
 

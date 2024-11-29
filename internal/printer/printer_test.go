@@ -8,7 +8,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/pabateman/dns-lookuper/internal/resolver"
+	"github.com/pabateman/dns-lookuper/internal/resolver/v1"
 	"github.com/stretchr/testify/require"
 )
 

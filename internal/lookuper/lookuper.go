@@ -9,7 +9,7 @@ import (
 
 	"github.com/pabateman/dns-lookuper/internal/parser"
 	"github.com/pabateman/dns-lookuper/internal/printer"
-	"github.com/pabateman/dns-lookuper/internal/resolver"
+	"github.com/pabateman/dns-lookuper/internal/resolver/v1"
 
 	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
@@ -155,8 +155,8 @@ func performTask(t *task, s *settings) error {
 
 	printer := printer.NewPrinter().
 		WithEntries(responses).
-		WithFormat(t.Format).
 		WithTemplate(t.Template).
+		WithFormat(t.Format).
 		WithOutput(outputFile)
 
 	err = printer.Print()

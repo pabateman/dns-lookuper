@@ -9,7 +9,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/valyala/fasttemplate"
 
-	"github.com/pabateman/dns-lookuper/internal/resolver"
+	"github.com/pabateman/dns-lookuper/internal/resolver/v1"
 )
 
 const (
