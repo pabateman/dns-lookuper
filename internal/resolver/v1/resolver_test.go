@@ -15,15 +15,15 @@ var (
 		"kernel.org",
 	}
 
-	dnOnlyIPv4 = []string{
-		"fedora.com",
-		"hashicorp.com",
-	}
+	// dnOnlyIPv4 = []string{
+	// 	"fedora.com",
+	// 	"hashicorp.com",
+	// }
 
-	dnNonExistent = []string{
-		"foo.iana.org",
-		"bar.kernel.org",
-	}
+	// dnNonExistent = []string{
+	// 	"foo.iana.org",
+	// 	"bar.kernel.org",
+	// }
 
 	expectedValid = []Response{
 		{
@@ -44,43 +44,43 @@ var (
 		},
 	}
 
-	expectedOnlyIPv4 = []Response{
-		{
-			Name: "fedora.com",
-			Addresses: []net.IP{
-				{86, 105, 245, 69},
-			},
-			Error: nil,
-		},
-		{
-			Name: "hashicorp.com",
-			Addresses: []net.IP{
-				{76, 76, 21, 21},
-			},
-			Error: nil,
-		},
-	}
+	// expectedOnlyIPv4 = []Response{
+	// 	{
+	// 		Name: "fedora.com",
+	// 		Addresses: []net.IP{
+	// 			{86, 105, 245, 69},
+	// 		},
+	// 		Error: nil,
+	// 	},
+	// 	{
+	// 		Name: "hashicorp.com",
+	// 		Addresses: []net.IP{
+	// 			{76, 76, 21, 21},
+	// 		},
+	// 		Error: nil,
+	// 	},
+	// }
 
-	expectedNonExistend = []Response{
-		{
-			Name:      "foo.iana.org",
-			Addresses: []net.IP{},
-			Error: &net.DNSError{
-				Name:       "foo.iana.org",
-				Err:        "no such host",
-				IsNotFound: true,
-			},
-		},
-		{
-			Name:      "bar.kernel.org",
-			Addresses: []net.IP{},
-			Error: &net.DNSError{
-				Name:       "bar.kernel.org",
-				Err:        "no such host",
-				IsNotFound: true,
-			},
-		},
-	}
+	// expectedNonExistend = []Response{
+	// 	{
+	// 		Name:      "foo.iana.org",
+	// 		Addresses: []net.IP{},
+	// 		Error: &net.DNSError{
+	// 			Name:       "foo.iana.org",
+	// 			Err:        "no such host",
+	// 			IsNotFound: true,
+	// 		},
+	// 	},
+	// 	{
+	// 		Name:      "bar.kernel.org",
+	// 		Addresses: []net.IP{},
+	// 		Error: &net.DNSError{
+	// 			Name:       "bar.kernel.org",
+	// 			Err:        "no such host",
+	// 			IsNotFound: true,
+	// 		},
+	// 	},
+	// }
 )
 
 func deepCopyResponses(r []Response) []Response {
