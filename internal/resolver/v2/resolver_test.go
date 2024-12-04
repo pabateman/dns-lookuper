@@ -1,7 +1,6 @@
 package resolver
 
 import (
-	"net"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,17 +15,15 @@ var (
 	expectedValid = []Response{
 		{
 			Name: "iana.org",
-			Addresses: []net.IP{
-				{192, 0, 43, 8},
-				{32, 1, 5, 0, 0, 136, 2, 0, 0, 0, 0, 0, 0, 0, 0, 8},
+			Addresses: []string{
+				"192.0.43.8",
 			},
 			Error: nil,
 		},
 		{
 			Name: "kernel.org",
-			Addresses: []net.IP{
-				{139, 178, 84, 217},
-				{38, 4, 19, 128, 70, 65, 197, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+			Addresses: []string{
+				"139.178.84.217",
 			},
 			Error: nil,
 		},
@@ -34,7 +31,7 @@ var (
 )
 
 func TestBasicResolver(t *testing.T) {
-	r := NewResolver()
+	r := NewResolver().WithMode(ModeIpv4)
 	responsesValid, err := r.Resolve(dnValid)
 	require.Nil(t, err)
 
