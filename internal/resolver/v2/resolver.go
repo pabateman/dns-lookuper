@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -28,7 +29,7 @@ type Response struct {
 type Resolver struct {
 	resolver *dns.Client
 	timeout  time.Duration
-	mode     uint16
+	mode     []uint16
 }
 
 func NewResolver() *Resolver {
@@ -60,39 +61,39 @@ func (r *Resolver) Resolve(dn []string) ([]Response, error) {
 	}
 
 	for _, name := range dn {
-		msgQuery := &dns.Msg{
-			MsgHdr: dns.MsgHdr{
-				Id:               dns.Id(),
-				RecursionDesired: true,
-			},
-			Question: []dns.Question{
-				{
-					Name:   dns.Fqdn(name),
-					Qtype:  r.mode,
-					Qclass: dns.ClassINET,
-				},
-			},
-		}
-
-		msqResponse, _, err := r.resolver.Exchange(
-			msgQuery,
-			fmt.Sprintf("%s:%s", config.Servers[0], "53"),
-		)
-
-		if err != nil {
-			return nil, err
-		}
-
 		result = append(result, Response{
 			Name:      name,
 			Addresses: make([]string, 0),
-		})
+		},
+		)
 
-		for _, response := range msqResponse.Answer {
-			result[len(result)-1].Addresses = append(
-				result[len(result)-1].Addresses,
-				strings.Split(response.String(), "\t")[4],
+		for _, queryType := range r.mode {
+			msgQuery := &dns.Msg{
+				MsgHdr: dns.MsgHdr{
+					Id:               dns.Id(),
+					RecursionDesired: true,
+				},
+				Question: []dns.Question{
+					{
+						Name:   dns.Fqdn(name),
+						Qtype:  queryType,
+						Qclass: dns.ClassINET,
+					},
+				},
+			}
+
+			msqResponse, _, err := r.resolver.Exchange(
+				msgQuery,
+				fmt.Sprintf("%s:%s", config.Servers[0], "53"),
 			)
+
+			if err != nil {
+				return nil, err
+			}
+
+			for _, response := range msqResponse.Answer {
+				result = createOrAppendResponse(result, name, strings.Split(response.String(), "\t")[4])
+			}
 		}
 
 	}
@@ -100,15 +101,32 @@ func (r *Resolver) Resolve(dn []string) ([]Response, error) {
 	return result, nil
 }
 
-func getQueryType(m string) uint16 {
+func getQueryType(m string) []uint16 {
 	switch m {
 	case ModeIpv4:
-		return dns.TypeA
+		return []uint16{dns.TypeA}
 	case ModeIpv6:
-		return dns.TypeAAAA
-	case ModeAll:
-		return dns.TypeANY
+		return []uint16{dns.TypeAAAA}
 	default:
-		return dns.TypeNone
+		return []uint16{dns.TypeA, dns.TypeAAAA}
+	}
+}
+
+func createOrAppendResponse(s []Response, name string, address string) []Response {
+	index := slices.IndexFunc(s,
+		func(r Response) bool {
+			return r.Name == name
+		},
+	)
+	if index == -1 {
+		return append(s, Response{
+			Name: name,
+			Addresses: []string{
+				address,
+			},
+		})
+	} else {
+		s[index].Addresses = append(s[index].Addresses, address)
+		return s
 	}
 }
