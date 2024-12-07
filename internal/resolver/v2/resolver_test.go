@@ -1,6 +1,8 @@
 package resolver
 
 import (
+	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,6 +17,11 @@ var (
 	dnOnlyIPv4 = []string{
 		"fedora.com",
 		"hashicorp.com",
+	}
+
+	dnNxdomain = []string{
+		"foo.iana.org",
+		"buz.kernel.org",
 	}
 
 	expectedValid = []Response{
@@ -55,6 +62,19 @@ var (
 			Error:     nil,
 		},
 	}
+
+	expectedNxdomain = []Response{
+		{
+			Name:      "foo.iana.org",
+			Addresses: []string{},
+			Error:     fmt.Errorf("no such host"),
+		},
+		{
+			Name:      "buz.kernel.org",
+			Addresses: []string{},
+			Error:     fmt.Errorf("no such host"),
+		},
+	}
 )
 
 func TestBasicResolver(t *testing.T) {
@@ -78,4 +98,24 @@ func TestOnlyIPv4(t *testing.T) {
 	require.Nil(t, err)
 
 	require.Equal(t, expectedOnlyIPv4Empty, responseEmpty)
+}
+
+func TestNxdomain(t *testing.T) {
+	r := NewResolver()
+
+	responseNxdomain, err := r.Resolve(dnNxdomain)
+	require.Nil(t, err)
+
+	require.Equal(t, expectedNxdomain, responseNxdomain)
+
+	responseValid, err := r.Resolve(dnValid)
+	require.Nil(t, err)
+
+	responseTotal := slices.Concat(responseNxdomain, responseValid)
+
+	responseTotal = ClearNxdomains(responseTotal)
+	require.Equal(t, expectedValid, responseTotal)
+
+	responseTotal = ClearNxdomains(responseTotal)
+	require.Equal(t, expectedValid, responseTotal)
 }

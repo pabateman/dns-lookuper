@@ -39,7 +39,7 @@ func NewResolver() *Resolver {
 			Timeout:        TimeoutDefault,
 		},
 		timeout: TimeoutDefault,
-		mode:    getQueryType(ModeDefault),
+		mode:    getQueryTypes(ModeDefault),
 	}
 }
 
@@ -49,7 +49,7 @@ func (r *Resolver) WithTimeout(t time.Duration) *Resolver {
 }
 
 func (r *Resolver) WithMode(m string) *Resolver {
-	r.mode = getQueryType(m)
+	r.mode = getQueryTypes(m)
 	return r
 }
 
@@ -91,8 +91,12 @@ func (r *Resolver) Resolve(dn []string) ([]Response, error) {
 				return nil, err
 			}
 
-			for _, response := range msqResponse.Answer {
-				result = createOrAppendResponse(result, name, strings.Split(response.String(), "\t")[4])
+			if dns.RcodeToString[msqResponse.MsgHdr.Rcode] == "NXDOMAIN" {
+				result[len(result)-1].Error = fmt.Errorf("no such host")
+			} else {
+				for _, response := range msqResponse.Answer {
+					result[len(result)-1].Addresses = append(result[len(result)-1].Addresses, strings.Split(response.String(), "\t")[4])
+				}
 			}
 		}
 
@@ -101,7 +105,26 @@ func (r *Resolver) Resolve(dn []string) ([]Response, error) {
 	return result, nil
 }
 
-func getQueryType(m string) []uint16 {
+func ClearNxdomains(rs []Response) []Response {
+	for {
+		index := slices.IndexFunc(rs, func(response Response) bool {
+			if response.Error != nil {
+				return response.Error.Error() == "no such host"
+			}
+			return false
+		})
+
+		if index == -1 {
+			break
+		}
+
+		rs = slices.Delete(rs, index, index+1)
+	}
+
+	return rs
+}
+
+func getQueryTypes(m string) []uint16 {
 	switch m {
 	case ModeIpv4:
 		return []uint16{dns.TypeA}
@@ -109,24 +132,5 @@ func getQueryType(m string) []uint16 {
 		return []uint16{dns.TypeAAAA}
 	default:
 		return []uint16{dns.TypeA, dns.TypeAAAA}
-	}
-}
-
-func createOrAppendResponse(s []Response, name string, address string) []Response {
-	index := slices.IndexFunc(s,
-		func(r Response) bool {
-			return r.Name == name
-		},
-	)
-	if index == -1 {
-		return append(s, Response{
-			Name: name,
-			Addresses: []string{
-				address,
-			},
-		})
-	} else {
-		s[index].Addresses = append(s[index].Addresses, address)
-		return s
 	}
 }
