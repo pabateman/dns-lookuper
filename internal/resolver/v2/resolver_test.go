@@ -3,7 +3,9 @@ package resolver
 import (
 	"slices"
 	"testing"
+	"time"
 
+	"github.com/miekg/dns"
 	"github.com/stretchr/testify/require"
 )
 
@@ -102,6 +104,14 @@ func TestBasicResolver(t *testing.T) {
 
 	require.Equal(t, expectedValidIPv6, response)
 
+	r.WithMode(ModeIpv4)
+	response, err = r.Resolve(dnValid)
+	require.Nil(t, err)
+
+	require.Equal(t, expectedValidIPv4, response)
+
+	r.WithMode("foobarbuzz")
+	require.Equal(t, r.mode, dns.TypeA)
 }
 
 func TestOnlyIPv4(t *testing.T) {
@@ -137,4 +147,12 @@ func TestNxdomain(t *testing.T) {
 
 	responseTotal = FilterResponsesNoerror(responseTotal)
 	require.Equal(t, expectedValidIPv4, responseTotal)
+}
+
+func TestTimeout(t *testing.T) {
+	r := NewResolver().WithTimeout(time.Microsecond * 10)
+
+	_, err := r.Resolve([]string{dnValid[0]})
+	require.NotNil(t, err)
+
 }
