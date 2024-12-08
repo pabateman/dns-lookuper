@@ -3,12 +3,11 @@ package printer
 import (
 	"bytes"
 	"fmt"
-	"net"
 	"os"
 	"path"
 	"testing"
 
-	"github.com/pabateman/dns-lookuper/internal/resolver/v1"
+	"github.com/pabateman/dns-lookuper/internal/resolver/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,17 +15,17 @@ var (
 	entries = []resolver.Response{
 		{
 			Name: "cloudflare.com",
-			Addresses: []net.IP{
-				{8, 8, 8, 8},
-				{1, 1, 1, 1},
+			Addresses: []string{
+				"8.8.8.8",
+				"1.1.1.1",
 			},
 		},
 		{
 			Name: "google.com",
-			Addresses: []net.IP{
-				{10, 10, 10, 10},
-				{123, 123, 123, 123},
-				{8, 8, 8, 8},
+			Addresses: []string{
+				"10.10.10.10",
+				"123.123.123.123",
+				"8.8.8.8",
 			},
 		},
 	}

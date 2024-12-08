@@ -8,7 +8,7 @@ import (
 
 	"github.com/ghodss/yaml"
 	"github.com/pabateman/dns-lookuper/internal/printer"
-	"github.com/pabateman/dns-lookuper/internal/resolver/v1"
+	"github.com/pabateman/dns-lookuper/internal/resolver/v2"
 	cli "github.com/urfave/cli/v2"
 )
 
@@ -78,7 +78,7 @@ var (
 		},
 		&cli.StringFlag{
 			Name:    argMode,
-			Usage:   fmt.Sprintf("accept one of values: '%s', '%s' or '%s'", resolver.ModeIpv4, resolver.ModeIpv6, resolver.ModeAll),
+			Usage:   fmt.Sprintf("accept one of values: '%s' or '%s'", resolver.ModeIpv4, resolver.ModeIpv6),
 			Aliases: []string{"m"},
 			EnvVars: []string{"DNS_LOOKUPER_MODE"},
 			Value:   modeDefault,
@@ -151,7 +151,6 @@ var (
 	}
 
 	modeEnum = []string{
-		resolver.ModeAll,
 		resolver.ModeIpv4,
 		resolver.ModeIpv6,
 	}
