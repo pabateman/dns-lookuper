@@ -1,7 +1,6 @@
 package resolver
 
 import (
-	"fmt"
 	"slices"
 	"testing"
 
@@ -24,16 +23,29 @@ var (
 		"buz.kernel.org",
 	}
 
-	expectedValid = []Response{
+	expectedValidIPv4 = []Response{
 		{
 			Name:      "iana.org",
-			Addresses: []string{"192.0.43.8", "2001:500:88:200::8"},
-			Error:     nil,
+			Addresses: []string{"192.0.43.8"},
+			rcode:     0,
 		},
 		{
 			Name:      "kernel.org",
-			Addresses: []string{"139.178.84.217", "2604:1380:4641:c500::1"},
-			Error:     nil,
+			Addresses: []string{"139.178.84.217"},
+			rcode:     0,
+		},
+	}
+
+	expectedValidIPv6 = []Response{
+		{
+			Name:      "iana.org",
+			Addresses: []string{"2001:500:88:200::8"},
+			rcode:     0,
+		},
+		{
+			Name:      "kernel.org",
+			Addresses: []string{"2604:1380:4641:c500::1"},
+			rcode:     0,
 		},
 	}
 
@@ -41,12 +53,12 @@ var (
 		{
 			Name:      "fedora.com",
 			Addresses: []string{"86.105.245.69"},
-			Error:     nil,
+			rcode:     0,
 		},
 		{
 			Name:      "hashicorp.com",
 			Addresses: []string{"76.76.21.21"},
-			Error:     nil,
+			rcode:     0,
 		},
 	}
 
@@ -54,12 +66,12 @@ var (
 		{
 			Name:      "fedora.com",
 			Addresses: []string{},
-			Error:     nil,
+			rcode:     0,
 		},
 		{
 			Name:      "hashicorp.com",
 			Addresses: []string{},
-			Error:     nil,
+			rcode:     0,
 		},
 	}
 
@@ -67,22 +79,29 @@ var (
 		{
 			Name:      "foo.iana.org",
 			Addresses: []string{},
-			Error:     fmt.Errorf("no such host"),
+			rcode:     3,
 		},
 		{
 			Name:      "buz.kernel.org",
 			Addresses: []string{},
-			Error:     fmt.Errorf("no such host"),
+			rcode:     3,
 		},
 	}
 )
 
 func TestBasicResolver(t *testing.T) {
-	r := NewResolver().WithMode(ModeAll)
+	r := NewResolver()
 	response, err := r.Resolve(dnValid)
 	require.Nil(t, err)
 
-	require.Equal(t, expectedValid, response)
+	require.Equal(t, expectedValidIPv4, response)
+
+	r.WithMode(ModeIpv6)
+	response, err = r.Resolve(dnValid)
+	require.Nil(t, err)
+
+	require.Equal(t, expectedValidIPv6, response)
+
 }
 
 func TestOnlyIPv4(t *testing.T) {
@@ -113,9 +132,9 @@ func TestNxdomain(t *testing.T) {
 
 	responseTotal := slices.Concat(responseNxdomain, responseValid)
 
-	responseTotal = ClearNxdomains(responseTotal)
-	require.Equal(t, expectedValid, responseTotal)
+	responseTotal = FilterResponsesNoerror(responseTotal)
+	require.Equal(t, expectedValidIPv4, responseTotal)
 
-	responseTotal = ClearNxdomains(responseTotal)
-	require.Equal(t, expectedValid, responseTotal)
+	responseTotal = FilterResponsesNoerror(responseTotal)
+	require.Equal(t, expectedValidIPv4, responseTotal)
 }

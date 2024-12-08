@@ -2,7 +2,6 @@ package resolver
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -12,8 +11,7 @@ import (
 const (
 	ModeIpv4    = "ipv4"
 	ModeIpv6    = "ipv6"
-	ModeAll     = "all"
-	ModeDefault = ModeAll
+	ModeDefault = ModeIpv4
 )
 
 const (
@@ -23,13 +21,13 @@ const (
 type Response struct {
 	Name      string   `json:"name"`
 	Addresses []string `json:"addresses"`
-	Error     error    `json:"-"`
+	rcode     int
 }
 
 type Resolver struct {
 	resolver *dns.Client
 	timeout  time.Duration
-	mode     []uint16
+	mode     uint16
 }
 
 func NewResolver() *Resolver {
@@ -67,37 +65,33 @@ func (r *Resolver) Resolve(dn []string) ([]Response, error) {
 		},
 		)
 
-		for _, queryType := range r.mode {
-			msgQuery := &dns.Msg{
-				MsgHdr: dns.MsgHdr{
-					Id:               dns.Id(),
-					RecursionDesired: true,
+		msgQuery := &dns.Msg{
+			MsgHdr: dns.MsgHdr{
+				Id:               dns.Id(),
+				RecursionDesired: true,
+			},
+			Question: []dns.Question{
+				{
+					Name:   dns.Fqdn(name),
+					Qtype:  r.mode,
+					Qclass: dns.ClassINET,
 				},
-				Question: []dns.Question{
-					{
-						Name:   dns.Fqdn(name),
-						Qtype:  queryType,
-						Qclass: dns.ClassINET,
-					},
-				},
-			}
+			},
+		}
 
-			msqResponse, _, err := r.resolver.Exchange(
-				msgQuery,
-				fmt.Sprintf("%s:%s", config.Servers[0], "53"),
-			)
+		msqResponse, _, err := r.resolver.Exchange(
+			msgQuery,
+			fmt.Sprintf("%s:%s", config.Servers[0], "53"),
+		)
 
-			if err != nil {
-				return nil, err
-			}
+		if err != nil {
+			return nil, err
+		}
 
-			if dns.RcodeToString[msqResponse.MsgHdr.Rcode] == "NXDOMAIN" {
-				result[len(result)-1].Error = fmt.Errorf("no such host")
-			} else {
-				for _, response := range msqResponse.Answer {
-					result[len(result)-1].Addresses = append(result[len(result)-1].Addresses, strings.Split(response.String(), "\t")[4])
-				}
-			}
+		result[len(result)-1].rcode = msqResponse.MsgHdr.Rcode
+
+		for _, response := range msqResponse.Answer {
+			result[len(result)-1].Addresses = append(result[len(result)-1].Addresses, strings.Split(response.String(), "\t")[4])
 		}
 
 	}
@@ -105,32 +99,33 @@ func (r *Resolver) Resolve(dn []string) ([]Response, error) {
 	return result, nil
 }
 
-func ClearNxdomains(rs []Response) []Response {
-	for {
-		index := slices.IndexFunc(rs, func(response Response) bool {
-			if response.Error != nil {
-				return response.Error.Error() == "no such host"
-			}
-			return false
-		})
+func FilterResponsesByRcode(rs []Response, rcode int) []Response {
+	result := make([]Response, 0)
 
-		if index == -1 {
-			break
+	for _, r := range rs {
+		if r.rcode == rcode {
+			result = append(result, r)
 		}
-
-		rs = slices.Delete(rs, index, index+1)
 	}
 
-	return rs
+	return result
 }
 
-func getQueryTypes(m string) []uint16 {
+func FilterResponsesNoerror(rs []Response) []Response {
+	return FilterResponsesByRcode(rs, dns.StringToRcode["NOERROR"])
+}
+
+func FilterResponsesNxdomain(rs []Response) []Response {
+	return FilterResponsesByRcode(rs, dns.StringToRcode["NXDOMAIN"])
+}
+
+func getQueryTypes(m string) uint16 {
 	switch m {
 	case ModeIpv4:
-		return []uint16{dns.TypeA}
+		return dns.TypeA
 	case ModeIpv6:
-		return []uint16{dns.TypeAAAA}
+		return dns.TypeAAAA
 	default:
-		return []uint16{dns.TypeA, dns.TypeAAAA}
+		return dns.TypeA
 	}
 }
