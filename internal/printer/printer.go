@@ -9,7 +9,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/valyala/fasttemplate"
 
-	"github.com/pabateman/dns-lookuper/internal/resolver/v1"
+	"github.com/pabateman/dns-lookuper/internal/resolver/v2"
 )
 
 const (
@@ -123,7 +123,7 @@ func (p *Printer) printTemplate() error {
 			for _, address := range response.Addresses {
 				s := t.ExecuteString(map[string]interface{}{
 					"host":    response.Name,
-					"address": address.String(),
+					"address": address,
 				})
 
 				if _, err := io.WriteString(p.writer, fmt.Sprintln(s)); err != nil {
@@ -145,9 +145,7 @@ func (p *Printer) printList() error {
 	addresses := make([]string, 0)
 
 	for _, response := range p.entries {
-		for _, address := range response.Addresses {
-			addresses = append(addresses, address.String())
-		}
+		addresses = append(addresses, response.Addresses...)
 	}
 
 	slices.Sort(addresses)
