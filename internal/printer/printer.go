@@ -145,9 +145,7 @@ func (p *Printer) printList() error {
 	addresses := make([]string, 0)
 
 	for _, response := range p.entries {
-		for _, address := range response.Addresses {
-			addresses = append(addresses, address)
-		}
+		addresses = append(addresses, response.Addresses...)
 	}
 
 	slices.Sort(addresses)
