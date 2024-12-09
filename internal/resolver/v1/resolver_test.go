@@ -98,10 +98,10 @@ func deepCopyResponses(r []Response) []Response {
 func filterResponses(r []Response, f func(net.IP) bool) []Response {
 	for i := range r {
 		for {
-			indexes := slices.IndexFunc(r[i].Addresses, f)
+			index := slices.IndexFunc(r[i].Addresses, f)
 
-			if indexes != -1 {
-				r[i].Addresses = slices.Delete(r[i].Addresses, indexes, indexes+1)
+			if index != -1 {
+				r[i].Addresses = slices.Delete(r[i].Addresses, index, index+1)
 			} else {
 				break
 			}

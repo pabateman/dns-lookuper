@@ -9,7 +9,7 @@ import (
 
 	"github.com/pabateman/dns-lookuper/internal/parser"
 	"github.com/pabateman/dns-lookuper/internal/printer"
-	"github.com/pabateman/dns-lookuper/internal/resolver/v1"
+	"github.com/pabateman/dns-lookuper/internal/resolver/v2"
 
 	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
@@ -109,35 +109,31 @@ func performTask(t *task, s *settings) error {
 		return fmt.Errorf("error while parsing lookup timeout: %+v", err)
 	}
 
-	resolver := resolver.NewResolver().
+	r := resolver.NewResolver().
 		WithMode(t.Mode).
 		WithTimeout(lookupTimeout)
 
-	responses, err := resolver.Resolve(domainNames.ParsedNames)
+	responses, err := r.Resolve(domainNames.ParsedNames)
 	if err != nil {
 		return fmt.Errorf("error while resolving domain name: %+v", err)
 	}
 
-	unresolvedErrors := make([]error, 0)
+	responsesNxdomain := resolver.FilterResponsesNxdomain(responses)
 
-	for _, r := range responses {
-		if r.Error != nil {
-			unresolvedErrors = append(unresolvedErrors, r.Error)
-		}
-	}
-
-	if len(unresolvedErrors) > 0 {
+	if len(responsesNxdomain) > 0 {
 		if s.Fail {
-			for _, err := range unresolvedErrors {
-				log.Error(err)
+			for _, response := range responsesNxdomain {
+				log.Errorf("%s: no such host", response.Name)
 			}
 			return fmt.Errorf("encountered errors while resolving domain names")
 		} else {
-			for _, err := range unresolvedErrors {
-				log.Warn(err)
+			for _, response := range responsesNxdomain {
+				log.Warnf("%s: no such host", response.Name)
 			}
 		}
 	}
+
+	responses = resolver.FilterResponsesNoerror(responses)
 
 	var outputFile *os.File
 
