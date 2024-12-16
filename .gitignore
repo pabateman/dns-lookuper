@@ -5,3 +5,6 @@ testdata/output/*
 dns-lookuper
 out/
 !out/.gitkeep
+
+testdata/lookuper/output/*
+!testdata/lookuper/output/.gitkeep

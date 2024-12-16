@@ -38,7 +38,7 @@ func Lookup(clictx *cli.Context) error {
 func daemonMode(config *config) error {
 	intervalDuration, err := time.ParseDuration(config.Settings.DaemonSettings.Interval)
 	if err != nil {
-		return err
+		return fmt.Errorf("error while parsing lookup interval: %+v", err)
 	}
 
 	ticker := time.NewTicker(intervalDuration)
